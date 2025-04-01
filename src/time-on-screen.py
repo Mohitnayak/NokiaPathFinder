@@ -44,8 +44,21 @@ def fetch_navigation_logs(db_path):
     df = pd.DataFrame(data, columns=["timestamp", "route", "pathUri", "withHaptic"])
     return df
 
+def calculate_time_on_screen(df_old):
+    df = df_old.copy()
+    # Convert timestamp to datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit="ms")
+    # Sort by timestamp
+    df = df.sort_values(by='timestamp')
+    # Calculate time differences
+    df['time_on_screen'] = df['timestamp'].diff().dt.total_seconds().fillna(0)
+    return df
 
 # Example usage
 db_path = "log_database.db"  # Update with your actual database path
 df = fetch_navigation_logs(db_path)
+df = calculate_time_on_screen(df)
+time_on_screen = df.groupby(["route"])["time_on_screen"].sum().reset_index()
 print(df)
+
+print(time_on_screen)
