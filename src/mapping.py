@@ -1,4 +1,5 @@
-from utils import fetch_logs
+from gpx import convert_location_logs_to_gpx
+from utils import convert_location_logs_to_df, fetch_logs
 from geojson import (
     convert_to_geojson_line,
     combine_geojson_features,
@@ -6,8 +7,6 @@ from geojson import (
     stringify_geojson,
     visualize_geojson_io,
 )
-import gpxpy
-import gpxpy.gpx
 import pandas as pd
 import json
 
@@ -20,7 +19,7 @@ def convert_is_on_track_logs_to_df(db_path: str) -> pd.DataFrame:
     last_location = None
 
     # Iterate through the DataFrame
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         if row["type"] == "location":
             # Update last known location
             last_location = json.loads(row["value"])
@@ -39,28 +38,24 @@ def convert_is_on_track_logs_to_df(db_path: str) -> pd.DataFrame:
     return result_df
 
 
-def convert_location_logs_to_df(db_path: str, column: str) -> pd.DataFrame:
-    df = fetch_logs(db_path, [column])
+convert_location_logs_to_gpx("log_database-1.db", "location", "out/output.gpx")
+convert_location_logs_to_gpx(
+    "log_database-1.db", "snapped-location", "out/snapped-output.gpx"
+)
 
-    df["latitude"] = (
-        df["value"].str.extract(r"\"latitude\":\s*([\d\.\-]+)").astype(float)
-    )
-    df["longitude"] = (
-        df["value"].str.extract(r"\"longitude\":\s*([\d\.\-]+)").astype(float)
-    )
-
-    return df
-
-
-# convert_location_logs_to_gpx("log_database-1.db", "location", "output.gpx")
-# convert_location_logs_to_gpx("log_database-1.db", "snapped-location", "snapped-output.gpx")
-
-geojson = convert_to_geojson_line(
+locations = convert_to_geojson_line(
     convert_location_logs_to_df("log_database-1.db", "location")
+)
+snappedLocations = convert_to_geojson_line(
+    convert_location_logs_to_df("log_database-1.db", "snapped-location"), color="orange"
 )
 isOnTrack = convert_to_geojson_points(
     convert_is_on_track_logs_to_df("log_database-1.db"),
     color=lambda row: "green" if row["is-on-track"] else "red",
     info_columns=["is-on-track"],
 )
-visualize_geojson_io(stringify_geojson(combine_geojson_features([geojson], isOnTrack)))
+visualize_geojson_io(
+    stringify_geojson(
+        combine_geojson_features([locations], [snappedLocations], isOnTrack)
+    )
+)

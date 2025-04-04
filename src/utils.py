@@ -28,3 +28,16 @@ def fetch_logs(db_path: str, types: list[str]):
     # Create DataFrame
     df = pd.DataFrame(data, columns=["timestamp", "type", "value"])
     return df
+
+
+def convert_location_logs_to_df(db_path: str, column: str) -> pd.DataFrame:
+    df = fetch_logs(db_path, [column])
+
+    df["latitude"] = (
+        df["value"].str.extract(r"\"latitude\":\s*([\d\.\-]+)").astype(float)
+    )
+    df["longitude"] = (
+        df["value"].str.extract(r"\"longitude\":\s*([\d\.\-]+)").astype(float)
+    )
+
+    return df

@@ -46,10 +46,8 @@ def convert_to_geojson_points(
     return features
 
 
-def combine_geojson_features(
-    geojson1: list[dict[str, any]], geojson2: list[dict[str, any]]
-) -> dict[str, any]:
-    combined_features = geojson1 + geojson2
+def combine_geojson_features(*args: list[dict[str, any]]) -> dict[str, any]:
+    combined_features = sum(args, [])
     return {"type": "FeatureCollection", "features": combined_features}
 
 
