@@ -1,7 +1,7 @@
 import pandas as pd
-import json
 
 from utils import fetch_logs
+from screenNavUtils import mapScreenNavValueToArgs
 
 
 def fetch_navigation_logs(db_path):
@@ -14,21 +14,10 @@ def fetch_navigation_logs(db_path):
 
 
 def process_row(row):
-    try:
-        json_data = json.loads(row["value"])  # Parse JSON
-        route = json_data.get("route")
-        args_raw = json_data.get("args")
-        args = json.loads(args_raw) if args_raw else None
-        pathUri = None
-        withHaptic = None
-        if args and isinstance(args, dict):
-            mMap = args.get("mMap")
-            if mMap:
-                pathUri = mMap.get("pathUri")
-                withHaptic = mMap.get("withHaptic")
-        return pd.Series([row["timestamp"], route, pathUri, withHaptic])
-    except (json.JSONDecodeError, TypeError):
-        return pd.Series([row["timestamp"], None, None, None])
+    data = mapScreenNavValueToArgs(row["value"])
+    return pd.Series(
+        [row["timestamp"], data["route"], data["pathUri"], data["withHaptic"]]
+    )
 
 
 def calculate_time_on_screen(df_old):
