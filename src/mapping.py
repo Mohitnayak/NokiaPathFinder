@@ -1,4 +1,4 @@
-from gpx import convert_location_logs_to_gpx
+from gpx import convert_location_logs_to_gpx, gpx_to_geojson
 from utils import convert_location_logs_to_df, fetch_logs
 from geojson import (
     convert_to_geojson_line,
@@ -38,24 +38,29 @@ def convert_is_on_track_logs_to_df(db_path: str) -> pd.DataFrame:
     return result_df
 
 
-convert_location_logs_to_gpx("log_database-1.db", "location", "out/output.gpx")
+convert_location_logs_to_gpx("log_database-a.db", "location", "out/output.gpx")
 convert_location_logs_to_gpx(
-    "log_database-1.db", "snapped-location", "out/snapped-output.gpx"
+    "log_database-a.db", "snapped-location", "out/snapped-output.gpx"
 )
 
+path1 = gpx_to_geojson("pynykin-1-dev.gpx", color="green")
+path2 = gpx_to_geojson("pynykin-2-dev.gpx", color="black")
+
 locations = convert_to_geojson_line(
-    convert_location_logs_to_df("log_database-1.db", "location")
+    convert_location_logs_to_df("log_database-a.db", "location")
 )
 snappedLocations = convert_to_geojson_line(
-    convert_location_logs_to_df("log_database-1.db", "snapped-location"), color="orange"
+    convert_location_logs_to_df("log_database-a.db", "snapped-location"), color="orange"
 )
 isOnTrack = convert_to_geojson_points(
-    convert_is_on_track_logs_to_df("log_database-1.db"),
+    convert_is_on_track_logs_to_df("log_database-a.db"),
     color=lambda row: "green" if row["is-on-track"] else "red",
     info_columns=["is-on-track"],
 )
 visualize_geojson_io(
     stringify_geojson(
-        combine_geojson_features([locations], [snappedLocations], isOnTrack)
+        combine_geojson_features(
+            path1, path2, [locations], [snappedLocations], isOnTrack
+        )
     )
 )

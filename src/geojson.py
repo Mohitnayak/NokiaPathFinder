@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import pandas as pd
 import urllib.parse
@@ -36,6 +37,9 @@ def convert_to_geojson_points(
                 "coordinates": [row["longitude"], row["latitude"]],
             },
             "properties": {
+                "time": datetime.fromtimestamp(row["timestamp"] / 1000).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
                 "marker-color": color(row),
                 "marker-size": "medium",
                 "marker-symbol": "",
