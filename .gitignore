@@ -178,3 +178,5 @@ pyrightconfig.json
 out/
 *.db-shm
 *.db-wal
+
+temp/

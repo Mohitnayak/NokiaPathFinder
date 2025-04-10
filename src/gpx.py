@@ -103,7 +103,7 @@ def gpx_to_geojson(gpx_file_path, color="blue"):
             geojson["features"].append(feature)
 
     # Otherwise return the GeoJSON dictionary
-    return geojson["features"]
+    return geojson
 
 
 def load_gpx_file(file_path):
