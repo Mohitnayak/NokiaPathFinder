@@ -5,7 +5,7 @@ import pandas as pd
 from streamlit_folium import st_folium
 import folium
 
-from deviation import get_on_track_logs
+from deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
 from gpx import gpx_to_geojson
 from utils import convert_location_logs_to_df, filter_logs_by_time_range
 from screen import fetch_navigation_logs
@@ -25,17 +25,15 @@ def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
     ]
 
     def format_row(row):
-        route = (
-            row["route"]
-            .replace("com.example.path_fainder.screens.", "")
-            .replace("/{pathUri}", "")
-            .replace("/{withHaptic}", "")
-        )
+        # route = (
+        #     row["route"]
+        #     .replace("com.example.path_fainder.screens.", "")
+        #     .replace("/{pathUri}", "")
+        #     .replace("/{withHaptic}", "")
+        # )
         path = os.path.basename(row["pathUri"]) if row["pathUri"] else ""
         haptic = haptic_visual_map.get(row["withHaptic"], "")
-        return (
-            f"{row['timestamp'].strftime('%y-%m-%d %H:%M:%S')} {route} {path} {haptic}"
-        )
+        return f"{row['timestamp'].strftime('%y-%m-%d %H:%M:%S')} {path} {haptic}"
 
     formatted_rows = navigation_screens.apply(
         format_row,
@@ -58,30 +56,45 @@ def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
     return start_timestamp, end_timestamp
 
 
-def time_slider(dataframe: pd.DataFrame) -> datetime:
+def time_slider(
+    dataframe: pd.DataFrame, id: str, with_time: bool = True, with_date: bool = True
+) -> tuple[datetime, datetime]:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
 
-    selected_date = st.date_input(
-        "Select date",
-        min_value=min_time_datetime,
-        max_value=max_time_datetime,
-        value=max_time_datetime,
-    )
+    if with_date:
+        if min_time_datetime.date() == max_time_datetime.date():
+            selected_date = min_time_datetime.date()
+        else:
+            selected_date = st.date_input(
+                "Select date",
+                min_value=min_time_datetime,
+                max_value=max_time_datetime,
+                value=max_time_datetime,
+                key=id,
+            )
 
-    data_on_selected_date = dataframe[dataframe["timestamp"].dt.date == selected_date]
+        data_on_selected_date = dataframe[
+            dataframe["timestamp"].dt.date == selected_date
+        ]
 
-    min_time_datetime = data_on_selected_date["timestamp"].min().to_pydatetime()
-    max_time_datetime = data_on_selected_date["timestamp"].max().to_pydatetime()
+        min_time_datetime = data_on_selected_date["timestamp"].min().to_pydatetime()
+        max_time_datetime = data_on_selected_date["timestamp"].max().to_pydatetime()
+        if with_time == False:
+            return (
+                datetime.combine(selected_date, datetime.min.time()),
+                datetime.combine(selected_date, datetime.max.time()),
+            )
 
-    return st.slider(
-        "Select time",
-        min_value=min_time_datetime,
-        max_value=max_time_datetime,
-        step=timedelta(seconds=1),
-        value=(min_time_datetime, max_time_datetime),
-        format="YY-MM-DD HH:mm:ss",
-    )
+    if with_time:
+        return st.slider(
+            "Select time",
+            min_value=min_time_datetime,
+            max_value=max_time_datetime,
+            step=timedelta(seconds=1),
+            value=(min_time_datetime, max_time_datetime),
+            format="YY-MM-DD HH:mm:ss",
+        )
 
 
 def select_file(label: str, temp_file_name: str = "", type=""):
@@ -158,6 +171,8 @@ def folium_map(elements):
     return st_folium(m, width=725)
 
 
+st.subheader("Database with logs")
+st.write("This is the database exported from the application")
 # db_path = "log_database-2.db"
 db_path = "temp/db.db"
 if not os.path.exists("temp"):
@@ -169,10 +184,15 @@ if not file:
     st.stop()
 
 st.subheader("Screen selection")
+st.write(
+    "Select the screen you want to analyze. Pay attention to the track gpx and navigation mode"
+)
 
 navigation_logs = fetch_navigation_logs(db_path=db_path)
 
-selected_navigation_time = time_slider(navigation_logs)
+selected_navigation_time = time_slider(
+    navigation_logs, id="navigation_time_slider", with_time=False
+)
 
 selected_screen_timestamps = screen_selector(
     filter_logs_by_time_range(navigation_logs, selected_navigation_time)
@@ -180,6 +200,9 @@ selected_screen_timestamps = screen_selector(
 
 st.subheader("Location logs")
 
+st.write(
+    "With this slider you can analyze only a part of selected route. By default it is the whole route."
+)
 location_logs = filter_logs_by_time_range(
     convert_location_logs_to_df(db_path, "location"),
     selected_screen_timestamps,
@@ -187,7 +210,9 @@ location_logs = filter_logs_by_time_range(
 if location_logs.empty:
     st.write("No location logs found for the selected screen.")
 else:
-    selected_time = time_slider(location_logs)
+    selected_time = time_slider(
+        location_logs, id="location_time_slider", with_date=False
+    )
 
     on_track_logs = get_on_track_logs(
         db_path, location_column="location", is_on_track=True, time_range=selected_time
@@ -198,10 +223,33 @@ else:
     filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
 
     base_gpx_path = "temp/path.gpx"
+    st.write("You can also add the recorded GPX file to compare it with user's route.")
     gpx_base_path = select_file(
         "Select Base GPX path", temp_file_name=base_gpx_path, type="gpx"
     )
 
+    st.write(f"Time on track: {get_time_on_track(db_path, selected_time)}s")
+    st.write(
+        f"Distance on track: {get_on_track_distance(db_path, location_column='location', time_range=selected_time, is_on_track=True)}m"
+    )
+
+    st.write(
+        f"Time off track: {get_time_on_track(db_path, selected_time, is_on_track=False)}s"
+    )
+    st.write(
+        f"Distance off track: {get_on_track_distance(db_path, location_column='location', time_range=selected_time, is_on_track=False)}m"
+    )
+
+    st.write("You can also add the recorded GPX file to compare it with user's route.")
+    st.markdown(
+        """
+    <span style="color:red">⬤</span> User's route  \n
+    <span style="color:blue">⬤</span> Base Track  \n
+    <span style="color:green">⬤</span> Locations where user was on track  \n
+    <span style="color:purple">⬤</span> Locations where user was off track 
+    """,
+        unsafe_allow_html=True,
+    )
     elements = []
     if gpx_base_path:
         elements.append(gpx_line(base_gpx_path))
