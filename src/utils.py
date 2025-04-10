@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+from datetime import datetime
 
 
 def fetch_logs(db_path: str, types: list[str]):
@@ -27,7 +28,7 @@ def fetch_logs(db_path: str, types: list[str]):
     print(f"Fetched {len(data)} valid navigation logs.")
     # Create DataFrame
     df = pd.DataFrame(data, columns=["timestamp", "type", "value"])
-    return df
+    return normalize_logs(df)
 
 
 def convert_location_logs_to_df(db_path: str, column: str) -> pd.DataFrame:
@@ -41,3 +42,21 @@ def convert_location_logs_to_df(db_path: str, column: str) -> pd.DataFrame:
     )
 
     return df
+
+
+def filter_logs_by_time_range(
+    dataframe: pd.DataFrame, time_range: tuple[datetime, datetime]
+) -> pd.DataFrame:
+    return dataframe[
+        (dataframe["timestamp"] >= time_range[0])
+        & (dataframe["timestamp"] <= time_range[1])
+    ]
+
+
+def normalize_logs(dataframe: pd.DataFrame) -> pd.DataFrame:
+    dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms")
+    if "next_screen_timestamp" in dataframe.columns:
+        dataframe["next_screen_timestamp"] = pd.to_datetime(
+            dataframe["next_screen_timestamp"], unit="ms"
+        )
+    return dataframe

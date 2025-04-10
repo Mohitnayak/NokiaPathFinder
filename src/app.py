@@ -57,15 +57,6 @@ def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
     return start_timestamp, end_timestamp
 
 
-def normalize_logs(dataframe: pd.DataFrame) -> pd.DataFrame:
-    dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms")
-    if "next_screen_timestamp" in dataframe.columns:
-        dataframe["next_screen_timestamp"] = pd.to_datetime(
-            dataframe["next_screen_timestamp"], unit="ms"
-        )
-    return dataframe
-
-
 def time_slider(dataframe: pd.DataFrame) -> datetime:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
@@ -90,15 +81,6 @@ def time_slider(dataframe: pd.DataFrame) -> datetime:
         value=(min_time_datetime, max_time_datetime),
         format="YY-MM-DD HH:mm:ss",
     )
-
-
-def filter_logs_by_time_range(
-    dataframe: pd.DataFrame, time_range: tuple[datetime, datetime]
-) -> pd.DataFrame:
-    return dataframe[
-        (dataframe["timestamp"] >= time_range[0])
-        & (dataframe["timestamp"] <= time_range[1])
-    ]
 
 
 def select_file(label: str, temp_file_name: str = "", type=""):
