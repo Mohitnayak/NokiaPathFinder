@@ -8,17 +8,32 @@ from screen import fetch_navigation_logs
 
 
 def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
-    haptic_visual_map = {True: "Haptic", False: "Visual", None: ""}
+    haptic_visual_map = {
+        True: "Haptic",
+        1: "Haptic",
+        2: "Haptic",
+        False: "Visual",
+        None: "",
+    }
+
+    navigation_screens = df[
+        df["route"].str.contains("{withHaptic}") & df["route"].str.contains("{pathUri}")
+    ]
 
     def format_row(row):
-        route = row["route"].replace("com.example.path_fainder.screens.", "")
+        route = (
+            row["route"]
+            .replace("com.example.path_fainder.screens.", "")
+            .replace("/{pathUri}", "")
+            .replace("/{withHaptic}", "")
+        )
         path = os.path.basename(row["pathUri"]) if row["pathUri"] else ""
         haptic = haptic_visual_map.get(row["withHaptic"], "")
         return (
             f"{row['timestamp'].strftime('%y-%m-%d %H:%M:%S')} {route} {path} {haptic}"
         )
 
-    formatted_rows = df.apply(
+    formatted_rows = navigation_screens.apply(
         format_row,
         axis=1,
     )
@@ -30,8 +45,8 @@ def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
     selected_index = formatted_rows[formatted_rows == selected_row].index[0]
 
     # Get the start and end timestamps for the selected row
-    start_timestamp = df.loc[selected_index, "timestamp"]
-    end_timestamp = df.loc[selected_index, "next_screen_timestamp"]
+    start_timestamp = navigation_screens.loc[selected_index, "timestamp"]
+    end_timestamp = navigation_screens.loc[selected_index, "next_screen_timestamp"]
 
     if end_timestamp is pd.NaT:
         end_timestamp = start_timestamp + timedelta(hours=12)
@@ -51,8 +66,6 @@ def normalize_logs(dataframe: pd.DataFrame) -> pd.DataFrame:
 def time_slider(dataframe: pd.DataFrame) -> datetime:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
-
-    st.write(dataframe)
 
     selected_date = st.date_input(
         "Select date",
@@ -87,12 +100,17 @@ def filter_logs_by_time_range(
 
 db_path = "log_database-2.db"
 
+st.subheader("Screen selection")
+
 navigation_logs = normalize_logs(fetch_navigation_logs(db_path=db_path))
 
-st.write(navigation_logs)
-selected_screen_timestamps = screen_selector(navigation_logs)
+selected_navigation_time = time_slider(navigation_logs)
 
-st.write(selected_screen_timestamps)
+selected_screen_timestamps = screen_selector(
+    filter_logs_by_time_range(navigation_logs, selected_navigation_time)
+)
+
+st.subheader("Location logs")
 
 location_logs = filter_logs_by_time_range(
     normalize_logs(convert_location_logs_to_df(db_path, "location")),
