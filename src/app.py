@@ -16,6 +16,18 @@ def time_slider(dataframe: pd.DataFrame) -> datetime:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
 
+    selected_date = st.date_input(
+        "Select date",
+        min_value=min_time_datetime,
+        max_value=max_time_datetime,
+        value=min_time_datetime,
+    )
+
+    data_on_selected_date = dataframe[dataframe["timestamp"].dt.date == selected_date]
+
+    min_time_datetime = data_on_selected_date["timestamp"].min().to_pydatetime()
+    max_time_datetime = data_on_selected_date["timestamp"].max().to_pydatetime()
+
     return st.slider(
         "Select time",
         min_value=min_time_datetime,
@@ -41,4 +53,4 @@ location_logs = normalize_logs(
 selected_time = time_slider(location_logs)
 filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
 
-st.map(filtered_location_logs, size=1)
+st.map(filtered_location_logs, size=1, zoom=16)
