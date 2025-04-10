@@ -31,11 +31,12 @@ def calculate_time_on_screen(df_old):
     return df
 
 
-# Example usage
-db_path = "log_database.db"  # Update with your actual database path
-df = fetch_navigation_logs(db_path)
-df = calculate_time_on_screen(df)
-time_on_screen = df.groupby(["route"])["time_on_screen"].sum().reset_index()
-print(df)
+if __name__ == "__main__":
+    # Example usage
+    db_path = "log_database.db"  # Update with your actual database path
+    df = fetch_navigation_logs(db_path)
+    df = calculate_time_on_screen(df)
+    time_on_screen = df.groupby(["route"])["time_on_screen"].sum().reset_index()
+    print(df)
 
-print(time_on_screen)
+    print(time_on_screen)
