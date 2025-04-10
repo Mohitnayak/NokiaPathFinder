@@ -10,6 +10,7 @@ def fetch_navigation_logs(db_path):
 
     df = raw_data.apply(process_row, axis=1)
     df.columns = ["timestamp", "route", "pathUri", "withHaptic"]
+    df["next_screen_timestamp"] = df["timestamp"].shift(-1)
     return df
 
 

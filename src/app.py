@@ -1,20 +1,58 @@
+import os
 import streamlit as st
 from datetime import timedelta, datetime
 import pandas as pd
 
 from utils import convert_location_logs_to_df, fetch_logs
+from screen import fetch_navigation_logs
 
-logs = fetch_logs("log_database-2.db", ["location"])
+
+def screen_selector(df: pd.DataFrame) -> tuple[datetime, datetime]:
+    haptic_visual_map = {True: "Haptic", False: "Visual", None: ""}
+
+    def format_row(row):
+        route = row["route"].replace("com.example.path_fainder.screens.", "")
+        path = os.path.basename(row["pathUri"]) if row["pathUri"] else ""
+        haptic = haptic_visual_map.get(row["withHaptic"], "")
+        return (
+            f"{row['timestamp'].strftime('%y-%m-%d %H:%M:%S')} {route} {path} {haptic}"
+        )
+
+    formatted_rows = df.apply(
+        format_row,
+        axis=1,
+    )
+
+    # Allow the user to select a row
+    selected_row = st.selectbox("Select a screen:", formatted_rows)
+
+    # Find the index of the selected row in the DataFrame
+    selected_index = formatted_rows[formatted_rows == selected_row].index[0]
+
+    # Get the start and end timestamps for the selected row
+    start_timestamp = df.loc[selected_index, "timestamp"]
+    end_timestamp = df.loc[selected_index, "next_screen_timestamp"]
+
+    if end_timestamp is pd.NaT:
+        end_timestamp = start_timestamp + timedelta(hours=12)
+
+    return start_timestamp, end_timestamp
 
 
 def normalize_logs(dataframe: pd.DataFrame) -> pd.DataFrame:
     dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms")
+    if "next_screen_timestamp" in dataframe.columns:
+        dataframe["next_screen_timestamp"] = pd.to_datetime(
+            dataframe["next_screen_timestamp"], unit="ms"
+        )
     return dataframe
 
 
 def time_slider(dataframe: pd.DataFrame) -> datetime:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
+
+    st.write(dataframe)
 
     selected_date = st.date_input(
         "Select date",
@@ -47,10 +85,23 @@ def filter_logs_by_time_range(
     ]
 
 
-location_logs = normalize_logs(
-    convert_location_logs_to_df("log_database-2.db", "location")
-)
-selected_time = time_slider(location_logs)
-filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
+db_path = "log_database-2.db"
 
-st.map(filtered_location_logs, size=1, zoom=16)
+navigation_logs = normalize_logs(fetch_navigation_logs(db_path=db_path))
+
+st.write(navigation_logs)
+selected_screen_timestamps = screen_selector(navigation_logs)
+
+st.write(selected_screen_timestamps)
+
+location_logs = filter_logs_by_time_range(
+    normalize_logs(convert_location_logs_to_df(db_path, "location")),
+    selected_screen_timestamps,
+)
+if location_logs.empty:
+    st.write("No location logs found for the selected screen.")
+else:
+    selected_time = time_slider(location_logs)
+    filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
+
+    st.map(filtered_location_logs, size=1, zoom=16)
