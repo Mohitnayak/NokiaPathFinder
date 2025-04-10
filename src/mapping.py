@@ -46,6 +46,11 @@ convert_location_logs_to_gpx(
 path1 = gpx_to_geojson("pynykin-1-dev.gpx", color="green")
 path2 = gpx_to_geojson("pynykin-2-dev.gpx", color="black")
 
+with open("out/path1.json", "w") as f:
+    f.write(stringify_geojson(path1))
+with open("out/path2.json", "w") as f:
+    f.write(stringify_geojson(path2))
+
 locations = convert_to_geojson_line(
     convert_location_logs_to_df("log_database-a.db", "location")
 )
