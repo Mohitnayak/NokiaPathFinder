@@ -5,8 +5,9 @@ import pandas as pd
 from streamlit_folium import st_folium
 import folium
 
+from deviation import get_on_track_logs
 from gpx import gpx_to_geojson
-from utils import convert_location_logs_to_df, fetch_logs
+from utils import convert_location_logs_to_df, filter_logs_by_time_range
 from screen import fetch_navigation_logs
 
 
@@ -65,7 +66,7 @@ def time_slider(dataframe: pd.DataFrame) -> datetime:
         "Select date",
         min_value=min_time_datetime,
         max_value=max_time_datetime,
-        value=min_time_datetime,
+        value=max_time_datetime,
     )
 
     data_on_selected_date = dataframe[dataframe["timestamp"].dt.date == selected_date]
@@ -126,12 +127,13 @@ def combine_coords(*dfs):
     return combined_df
 
 
-def folium_dataframe_line(df):
+def folium_dataframe_line(df, color="red", weight=4, opacity=1.0):
     coordinates = list(zip(df["latitude"], df["longitude"]))
     line = folium.PolyLine(
         locations=coordinates,  # List of coordinates (latitude, longitude)
-        color="red",  # Color of the line
-        weight=4,  # Thickness of the line
+        color=color,
+        weight=weight,
+        opacity=opacity,
     )
     return line
 
@@ -143,7 +145,7 @@ def gpx_line(gpx_path):
 
 def folium_map(elements):
     m = folium.Map(zoom_start=16)
-    bounds:list[list[float]] = []
+    bounds: list[list[float]] = []
     for element in elements:
         element.add_to(m)
         bounds.append(element.get_bounds())
@@ -168,7 +170,7 @@ if not file:
 
 st.subheader("Screen selection")
 
-navigation_logs = normalize_logs(fetch_navigation_logs(db_path=db_path))
+navigation_logs = fetch_navigation_logs(db_path=db_path)
 
 selected_navigation_time = time_slider(navigation_logs)
 
@@ -179,13 +181,20 @@ selected_screen_timestamps = screen_selector(
 st.subheader("Location logs")
 
 location_logs = filter_logs_by_time_range(
-    normalize_logs(convert_location_logs_to_df(db_path, "location")),
+    convert_location_logs_to_df(db_path, "location"),
     selected_screen_timestamps,
 )
 if location_logs.empty:
     st.write("No location logs found for the selected screen.")
 else:
     selected_time = time_slider(location_logs)
+
+    on_track_logs = get_on_track_logs(
+        db_path, location_column="location", is_on_track=True, time_range=selected_time
+    )
+    off_track_logs = get_on_track_logs(
+        db_path, location_column="location", is_on_track=False, time_range=selected_time
+    )
     filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
 
     base_gpx_path = "temp/path.gpx"
@@ -196,5 +205,13 @@ else:
     elements = []
     if gpx_base_path:
         elements.append(gpx_line(base_gpx_path))
+    elements += map(
+        lambda row: folium_dataframe_line(row, color="green", weight=16, opacity=0.5),
+        on_track_logs,
+    )
+    elements += map(
+        lambda row: folium_dataframe_line(row, color="purple", weight=16, opacity=0.5),
+        off_track_logs,
+    )
     elements.append(folium_dataframe_line(filtered_location_logs))
     st_data = folium_map(elements)
