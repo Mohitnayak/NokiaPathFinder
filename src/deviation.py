@@ -107,6 +107,7 @@ def filter_location_data_by_intervals(
                 (location_data["timestamp"] >= start)
                 & (location_data["timestamp"] <= end)
             ]
-        segments.append(data)
+        if len(data) > 0:
+            segments.append(data)
 
     return segments
