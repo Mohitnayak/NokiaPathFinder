@@ -4,8 +4,13 @@ import streamlit as st
 
 
 def time_slider(
-    dataframe: pd.DataFrame, id: str, with_time: bool = True, with_date: bool = True
-) -> tuple[datetime, datetime]:
+    dataframe: pd.DataFrame,
+    id: str,
+    with_time: bool = True,
+    with_date: bool = True,
+    range: bool = True,
+    label: str = "Select time",
+) -> tuple[datetime, datetime] | datetime:
     min_time_datetime = dataframe["timestamp"].min().to_pydatetime()
     max_time_datetime = dataframe["timestamp"].max().to_pydatetime()
 
@@ -34,11 +39,13 @@ def time_slider(
             )
 
     if with_time:
+        value = (min_time_datetime, max_time_datetime) if range else min_time_datetime
         return st.slider(
-            "Select time",
+            label,
+            key=id,
             min_value=min_time_datetime,
             max_value=max_time_datetime,
             step=timedelta(seconds=1),
-            value=(min_time_datetime, max_time_datetime),
+            value=value,
             format="YY-MM-DD HH:mm:ss",
         )

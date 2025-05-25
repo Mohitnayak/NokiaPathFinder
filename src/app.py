@@ -6,7 +6,11 @@ import pandas as pd
 from components.display_location_logs import display_location_logs
 from components.select_file import select_file
 from components.time_slider import time_slider
-from utils import convert_location_logs_to_df, filter_logs_by_time_range
+from utils import (
+    convert_location_logs_to_df,
+    fetch_orientation_logs,
+    filter_logs_by_time_range,
+)
 from screen import fetch_navigation_logs
 
 
@@ -116,16 +120,78 @@ selected_screen_timestamps = screen_selector(
     filter_logs_by_time_range(navigation_logs, selected_navigation_time)
 )
 
+all_location_logs = filter_logs_by_time_range(
+    convert_location_logs_to_df(db_path, "location"),
+    selected_screen_timestamps,
+)
+
+st.subheader("Compass logs")
+
+orientation_time = time_slider(
+    all_location_logs,
+    id="navigation_time_slider_test",
+    with_time=True,
+    range=False,
+    label="Select time to display",
+)
+orientation_time = (orientation_time, orientation_time + timedelta(seconds=0.9))
+
+orientation_logs = filter_logs_by_time_range(
+    fetch_orientation_logs(db_path, "orientation-phone"),
+    orientation_time,
+)
+
+direction_logs = filter_logs_by_time_range(
+    fetch_orientation_logs(db_path, "direction-phone"),
+    orientation_time,
+)
+
+if orientation_logs.empty or direction_logs.empty:
+    st.write("No orientation logs found")
+else:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.text("Phone orientation")
+
+        st.markdown(
+            f"""
+        <div style="transform: rotate({orientation_logs['value'].iloc[0]}deg); 
+                    display: inline-block; 
+                    font-size: 60px;">
+            ↑
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+        st.text("Presented direction")
+
+        st.markdown(
+            f"""
+        <div style="width: 150px;height: 300px;border: 1px solid black;border-radius: 10px;display: flex;justify-content: center;align-items: center;">
+        <div style="transform: rotate({direction_logs['value'].iloc[0]}deg); 
+                    display: inline-block; 
+                    margin:0 auto;
+                    font-size: 60px;">
+            ↑
+        </div>
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+    with col2:
+        location_logs = filter_logs_by_time_range(all_location_logs, orientation_time)
+        st.map(
+            location_logs, latitude="latitude", longitude="longitude", zoom=16, size=4
+        )
+
 st.subheader("Location logs")
 
 st.write(
     "With this slider you can analyze only a part of selected route. By default it is the whole route."
 )
-location_logs = filter_logs_by_time_range(
-    convert_location_logs_to_df(db_path, "location"),
-    selected_screen_timestamps,
-)
-if location_logs.empty:
+if all_location_logs.empty:
     st.write("No location logs found for the selected screen.")
 else:
-    display_location_logs(location_logs=location_logs, db_path=db_path)
+    display_location_logs(location_logs=all_location_logs, db_path=db_path)
