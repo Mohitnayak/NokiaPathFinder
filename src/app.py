@@ -7,7 +7,7 @@ from basePath import get_base_path_for_time_range
 from components.display_location_logs import display_location_logs
 from components.select_file import select_file
 from components.time_slider import time_slider
-from csvLogs import get_csv_logs_for_time_range
+from csvLogs import display_csv_log, display_download_csv_button, get_csv_logs_for_time_range
 from utils import (
     convert_location_logs_to_df,
     fetch_orientation_logs,
@@ -127,7 +127,13 @@ all_location_logs = filter_logs_by_time_range(
     selected_screen_timestamps,
 )
 
-st.write(get_csv_logs_for_time_range(db_path, selected_screen_timestamps))
+st.subheader("CSV data")
+
+csvLog = get_csv_logs_for_time_range(db_path, selected_screen_timestamps)
+
+display_csv_log(csv_log=csvLog)
+display_download_csv_button(csv_log=csvLog)
+
 
 st.subheader("Location logs")
 

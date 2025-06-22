@@ -1,6 +1,8 @@
 from geopy.distance import geodesic
 import pandas as pd
 
+from basePath import BasePath
+
 
 def calculate_distance(df: pd.DataFrame) -> float:
     """
@@ -30,3 +32,15 @@ def calculate_distance(df: pd.DataFrame) -> float:
         total_distance += geodesic(coords[i], coords[i + 1]).meters
 
     return total_distance
+
+
+def compute_average_speed_m_s(df: pd.DataFrame) -> float:
+    total_distance = 0.0
+    timestamps = df["timestamp"].tolist()
+    coords = df[["latitude", "longitude"]].values.tolist()
+
+    for i in range(1, len(coords)):
+        total_distance += geodesic(coords[i - 1], coords[i]).meters
+
+    total_time_s = (timestamps[-1] - timestamps[0]).total_seconds()
+    return total_distance / total_time_s if total_time_s > 0 else 0
