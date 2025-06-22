@@ -3,9 +3,11 @@ import streamlit as st
 from datetime import timedelta, datetime
 import pandas as pd
 
+from basePath import get_base_path_for_time_range
 from components.display_location_logs import display_location_logs
 from components.select_file import select_file
 from components.time_slider import time_slider
+from csvLogs import get_csv_logs_for_time_range
 from utils import (
     convert_location_logs_to_df,
     fetch_orientation_logs,
@@ -125,6 +127,23 @@ all_location_logs = filter_logs_by_time_range(
     selected_screen_timestamps,
 )
 
+st.write(get_csv_logs_for_time_range(db_path, selected_screen_timestamps))
+
+st.subheader("Location logs")
+
+st.write(
+    "With this slider you can analyze only a part of selected route. By default it is the whole route."
+)
+if all_location_logs.empty:
+    st.write("No location logs found for the selected screen.")
+else:
+    base_path = base_path = get_base_path_for_time_range(
+        db_path=db_path, time_range=selected_screen_timestamps
+    )
+    display_location_logs(
+        location_logs=all_location_logs, db_path=db_path, base_path=base_path
+    )
+
 st.subheader("Compass logs")
 
 orientation_time = time_slider(
@@ -185,13 +204,3 @@ else:
         st.map(
             location_logs, latitude="latitude", longitude="longitude", zoom=16, size=4
         )
-
-st.subheader("Location logs")
-
-st.write(
-    "With this slider you can analyze only a part of selected route. By default it is the whole route."
-)
-if all_location_logs.empty:
-    st.write("No location logs found for the selected screen.")
-else:
-    display_location_logs(location_logs=all_location_logs, db_path=db_path)

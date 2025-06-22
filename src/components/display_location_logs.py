@@ -5,15 +5,18 @@ import pandas as pd
 from streamlit_folium import st_folium
 
 
-from components.select_file import select_file
+from basePath import BasePath
 from components.time_slider import time_slider
 from deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
-from gpx import gpx_to_geojson
+from geojson import convert_base_path_to_geojson
 from haptic import get_vibration_logs
 from utils import filter_logs_by_time_range
 
 
-def display_location_logs(location_logs: pd.DataFrame, db_path: str):
+def display_location_logs(
+    location_logs: pd.DataFrame, db_path: str, base_path: BasePath
+):
+
     selected_time = time_slider(
         location_logs, id="location_time_slider", with_date=False
     )
@@ -30,12 +33,6 @@ def display_location_logs(location_logs: pd.DataFrame, db_path: str):
         side_logs[side] = get_vibration_logs(
             db_path, location_column="location", time_range=selected_time, side=side
         )
-
-    base_gpx_path = "temp/path.gpx"
-    st.write("You can also add the recorded GPX file to compare it with user's route.")
-    gpx_base_path = select_file(
-        "Select Base GPX path", temp_file_name=base_gpx_path, type="gpx"
-    )
 
     st.write(f"Time on track: {get_time_on_track(db_path, selected_time)}s")
     st.write(
@@ -61,9 +58,9 @@ def display_location_logs(location_logs: pd.DataFrame, db_path: str):
     )
     elements = []
     haptic_elements = []
-    if gpx_base_path:
-        elements.append(gpx_line(base_gpx_path))
-        haptic_elements.append(gpx_line(base_gpx_path))
+    if base_path:
+        elements.append(base_path_line(base_path))
+        haptic_elements.append(base_path_line(base_path))
 
     elements += map(
         lambda row: folium_dataframe_line(row, color="green", weight=16, opacity=0.5),
@@ -116,6 +113,6 @@ def folium_map(elements):
     return st_folium(m, width=725)
 
 
-def gpx_line(gpx_path):
-    geojson = gpx_to_geojson(gpx_path, color="green")
+def base_path_line(base_path: BasePath):
+    geojson = convert_base_path_to_geojson(base_path, color="blue")
     return folium.GeoJson(geojson)

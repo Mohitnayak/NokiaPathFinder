@@ -5,6 +5,29 @@ import urllib.parse
 import webbrowser
 from typing import Callable
 
+from basePath import BasePath
+
+def convert_base_path_to_geojson(base_path: BasePath, color: str = "blue") -> dict[str, any]:
+    if not base_path.points:
+        raise ValueError("Base path points are empty.")
+
+    line_coords = [
+        [point.longitude, point.latitude] for point in base_path.points
+    ]
+
+    line_feature = {
+        "type": "Feature",
+        "geometry": {"type": "LineString", "coordinates": line_coords},
+        "properties": {
+            "name": "Base Path",
+            "stroke": color,
+            "stroke-width": 2,
+            "stroke-opacity": 1,
+            "deviation_zone_radius": base_path.deviation_zone_radius,
+        },
+    }
+
+    return line_feature
 
 def convert_to_geojson_line(df: pd.DataFrame, color: str = "blue") -> dict[str, any]:
     line_coords = df[["longitude", "latitude"]].values.tolist()
