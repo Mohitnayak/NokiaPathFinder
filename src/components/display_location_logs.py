@@ -10,7 +10,7 @@ from components.time_slider import time_slider
 from deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
 from geojson import convert_base_path_to_geojson
 from haptic import get_vibration_logs
-from utils import filter_logs_by_time_range
+from utils import convert_location_logs_to_df, filter_logs_by_time_range
 
 
 def display_location_logs(
@@ -28,6 +28,9 @@ def display_location_logs(
         db_path, location_column="location", is_on_track=False, time_range=selected_time
     )
     filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
+    raw_filtered_location_logs = filter_logs_by_time_range(
+        convert_location_logs_to_df(db_path, "raw-location"), selected_time
+    )
     side_logs = {}
     for side in ["Left", "Right", "Both", "None"]:
         side_logs[side] = get_vibration_logs(
@@ -49,7 +52,8 @@ def display_location_logs(
     st.write("You can also add the recorded GPX file to compare it with user's route.")
     st.markdown(
         """
-    <span style="color:red">⬤</span> User's route  \n
+    <span style="color:red">⬤</span> User's route (Fused Location)  \n
+    <span style="color:orange">⬤</span> User's route (Location Manager)  \n
     <span style="color:blue">⬤</span> Base Track  \n
     <span style="color:green">⬤</span> Locations where user was on track  \n
     <span style="color:purple">⬤</span> Locations where user was off track 
@@ -72,6 +76,7 @@ def display_location_logs(
     )
 
     elements.append(folium_dataframe_line(filtered_location_logs))
+    elements.append(folium_dataframe_line(raw_filtered_location_logs, color="orange", weight=4))
     haptic_elements.append(folium_dataframe_line(filtered_location_logs))
 
     st_data = folium_map(elements)
