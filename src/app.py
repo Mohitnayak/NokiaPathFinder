@@ -7,9 +7,16 @@ from basePath import get_base_path_for_time_range
 from components.display_location_logs import display_location_logs
 from components.select_file import select_file
 from components.time_slider import time_slider
-from csvLogs import display_csv_log, display_download_csv_button, get_csv_logs_for_time_range
+from csvLogs import (
+    display_csv_log,
+    display_download_csv_button,
+    get_csv_logs_for_time_range,
+)
+from geo import get_point_d_ahead
 from utils import (
     convert_location_logs_to_df,
+    convert_segment_log_to_df,
+    fetch_logs,
     fetch_orientation_logs,
     filter_logs_by_time_range,
 )
@@ -123,7 +130,7 @@ selected_screen_timestamps = screen_selector(
 )
 
 all_location_logs = filter_logs_by_time_range(
-    convert_location_logs_to_df(db_path, "location"),
+    convert_location_logs_to_df(db_path, "raw-location"),
     selected_screen_timestamps,
 )
 
@@ -159,21 +166,47 @@ orientation_time = time_slider(
     range=False,
     label="Select time to display",
 )
-orientation_time = (orientation_time, orientation_time + timedelta(seconds=0.9))
+orientation_time_range = (orientation_time, orientation_time + timedelta(seconds=0.5))
 
 orientation_logs = filter_logs_by_time_range(
     fetch_orientation_logs(db_path, "orientation-phone"),
-    orientation_time,
+    orientation_time_range,
 )
 
 direction_logs = filter_logs_by_time_range(
     fetch_orientation_logs(db_path, "direction-phone"),
-    orientation_time,
+    orientation_time_range,
 )
 
 if orientation_logs.empty or direction_logs.empty:
     st.write("No orientation logs found")
 else:
+    exact_direction_time = direction_logs["timestamp"].iloc[0]
+    last_orientation_before_time = filter_logs_by_time_range(
+        orientation_logs,
+        (exact_direction_time - timedelta(seconds=3), exact_direction_time),
+    ).tail(1)
+    last_location_before_time = filter_logs_by_time_range(
+        all_location_logs,
+        (exact_direction_time - timedelta(seconds=60), exact_direction_time),
+    ).tail(1)
+    last_remaining_segment_before_time = convert_segment_log_to_df(
+        filter_logs_by_time_range(
+            fetch_logs(db_path, ["remaining-segment"]),
+            (exact_direction_time - timedelta(seconds=60), exact_direction_time),
+        )
+        .tail(1)
+        .iloc[0]["value"]
+    )
+    last_current_segment_before_time = convert_segment_log_to_df(
+        filter_logs_by_time_range(
+            fetch_logs(db_path, ["current-segment"]),
+            (exact_direction_time - timedelta(seconds=600), exact_direction_time),
+        )
+        .tail(1)
+        .iloc[0]["value"]
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -189,12 +222,12 @@ else:
         """,
             unsafe_allow_html=True,
         )
-
+    with col2:
         st.text("Presented direction")
 
         st.markdown(
             f"""
-        <div style="width: 150px;height: 300px;border: 1px solid black;border-radius: 10px;display: flex;justify-content: center;align-items: center;">
+        <div style="width: 150px;height: 300px;border: 1px solid black;border-radius: 10px;display: flex;justify-content: center;align-items: center;transform: rotate({orientation_logs['value'].iloc[0]}deg)">
         <div style="transform: rotate({direction_logs['value'].iloc[0]}deg); 
                     display: inline-block; 
                     margin:0 auto;
@@ -205,8 +238,37 @@ else:
         """,
             unsafe_allow_html=True,
         )
-    with col2:
-        location_logs = filter_logs_by_time_range(all_location_logs, orientation_time)
-        st.map(
-            location_logs, latitude="latitude", longitude="longitude", zoom=16, size=4
-        )
+
+    lat, lon = get_point_d_ahead(
+        last_location_before_time["latitude"].iloc[0],
+        last_location_before_time["longitude"].iloc[0],
+        last_remaining_segment_before_time,
+        10,  # Distance ahead in meters
+    )
+    point_ahead = pd.DataFrame(
+        {
+            "latitude": [lat],
+            "longitude": [lon],
+            "color": "#0f0",  # Green color for the point ahead
+        }
+    )
+    last_remaining_segment_before_time["color"] = "#00f"
+    last_current_segment_before_time["color"] = "#0ff"
+    last_location_before_time["color"] = "#f00"
+    combined_df = pd.concat(
+        [
+            last_current_segment_before_time,
+            last_remaining_segment_before_time,
+            last_location_before_time,
+            point_ahead,
+        ],
+        ignore_index=True,
+    )
+    st.map(
+        combined_df,
+        latitude="latitude",
+        longitude="longitude",
+        color="color",
+        zoom=16,
+        size=1,
+    )

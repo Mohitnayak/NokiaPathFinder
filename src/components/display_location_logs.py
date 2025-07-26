@@ -22,10 +22,10 @@ def display_location_logs(
     )
 
     on_track_logs = get_on_track_logs(
-        db_path, location_column="location", is_on_track=True, time_range=selected_time
+        db_path, location_column="raw-location", is_on_track=True, time_range=selected_time
     )
     off_track_logs = get_on_track_logs(
-        db_path, location_column="location", is_on_track=False, time_range=selected_time
+        db_path, location_column="raw-location", is_on_track=False, time_range=selected_time
     )
     filtered_location_logs = filter_logs_by_time_range(location_logs, selected_time)
     raw_filtered_location_logs = filter_logs_by_time_range(
