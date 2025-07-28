@@ -25,11 +25,13 @@ pillow==11.1.0
 protobuf==5.29.4
 pyarrow==19.0.1
 pydeck==0.9.1
+pyproj==3.7.1
 python-dateutil==2.9.0.post0
 pytz==2025.2
 referencing==0.36.2
 requests==2.32.3
 rpds-py==0.24.0
+shapely==2.1.1
 six==1.17.0
 smmap==5.0.2
 streamlit==1.44.1
