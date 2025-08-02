@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from shapely.geometry import Point, LineString
 import pyproj
@@ -81,3 +82,30 @@ def convert_track_to_line(track_df: pd.DataFrame) -> LineString:
         Point(lon, lat) for lon, lat in zip(track_df["longitude"], track_df["latitude"])
     ]
     return LineString(points)
+
+def interpolate_locations(df: pd.DataFrame, num_points=20) -> pd.DataFrame:
+    """
+    Interpolates `num_points` points between each consecutive pair of coordinates in the DataFrame.
+
+    Parameters:
+    - df: A pandas DataFrame with 'latitude' and 'longitude' columns.
+    - num_points: Number of interpolated points between each pair (default is 20).
+
+    Returns:
+    - A new DataFrame with interpolated latitude and longitude points.
+    """
+    interpolated_data = []
+
+    for i in range(len(df) - 1):
+        start = df.iloc[i]
+        end = df.iloc[i + 1]
+
+        # Create arrays of interpolated latitudes and longitudes
+        latitudes = np.linspace(start['latitude'], end['latitude'], num_points + 2)  # +2 to include start and end
+        longitudes = np.linspace(start['longitude'], end['longitude'], num_points + 2)
+
+        for lat, lon in zip(latitudes, longitudes):
+            interpolated_data.append({'latitude': lat, 'longitude': lon})
+
+    # Convert to DataFrame
+    return pd.DataFrame(interpolated_data)

@@ -12,7 +12,7 @@ from csvLogs import (
     display_download_csv_button,
     get_csv_logs_for_time_range,
 )
-from geo import get_point_d_ahead
+from geo import interpolate_locations
 from utils import (
     convert_location_logs_to_df,
     convert_segment_log_to_df,
@@ -166,7 +166,7 @@ orientation_time = time_slider(
     range=False,
     label="Select time to display",
 )
-orientation_time_range = (orientation_time, orientation_time + timedelta(seconds=0.5))
+orientation_time_range = (orientation_time, orientation_time + timedelta(seconds=10))
 
 orientation_logs = filter_logs_by_time_range(
     fetch_orientation_logs(db_path, "orientation-phone"),
@@ -176,6 +176,14 @@ orientation_logs = filter_logs_by_time_range(
 direction_logs = filter_logs_by_time_range(
     fetch_orientation_logs(db_path, "direction-phone"),
     orientation_time_range,
+)
+
+track_point_logs = filter_logs_by_time_range(
+    convert_location_logs_to_df(db_path, "track-point"),
+    (
+        orientation_time - timedelta(seconds=60),
+        orientation_time + timedelta(seconds=60),
+    ),
 )
 
 if orientation_logs.empty or direction_logs.empty:
@@ -193,7 +201,7 @@ else:
     last_remaining_segment_before_time = convert_segment_log_to_df(
         filter_logs_by_time_range(
             fetch_logs(db_path, ["remaining-segment"]),
-            (exact_direction_time - timedelta(seconds=60), exact_direction_time),
+            (exact_direction_time - timedelta(seconds=300), exact_direction_time),
         )
         .tail(1)
         .iloc[0]["value"]
@@ -201,11 +209,15 @@ else:
     last_current_segment_before_time = convert_segment_log_to_df(
         filter_logs_by_time_range(
             fetch_logs(db_path, ["current-segment"]),
-            (exact_direction_time - timedelta(seconds=600), exact_direction_time),
+            (exact_direction_time - timedelta(seconds=300), exact_direction_time),
         )
         .tail(1)
         .iloc[0]["value"]
     )
+    last_track_point_before_time = filter_logs_by_time_range(
+        track_point_logs,
+        (exact_direction_time - timedelta(seconds=300), exact_direction_time),
+    ).tail(1)
 
     col1, col2 = st.columns(2)
 
@@ -239,28 +251,27 @@ else:
             unsafe_allow_html=True,
         )
 
-    lat, lon = get_point_d_ahead(
-        last_location_before_time["latitude"].iloc[0],
-        last_location_before_time["longitude"].iloc[0],
-        last_remaining_segment_before_time,
-        10,  # Distance ahead in meters
+    last_remaining_segment_before_time = interpolate_locations(
+        last_remaining_segment_before_time, 30
     )
-    point_ahead = pd.DataFrame(
-        {
-            "latitude": [lat],
-            "longitude": [lon],
-            "color": "#0f0",  # Green color for the point ahead
-        }
+    last_current_segment_before_time = interpolate_locations(
+        last_current_segment_before_time, 30
     )
+
+    last_track_point_before_time["color"] = "#0f0"
+    last_track_point_before_time["size"] = 2
     last_remaining_segment_before_time["color"] = "#00f"
+    last_remaining_segment_before_time["size"] = 1
     last_current_segment_before_time["color"] = "#0ff"
+    last_current_segment_before_time["size"] = 1
     last_location_before_time["color"] = "#f00"
+    last_location_before_time["size"] = 2
     combined_df = pd.concat(
         [
             last_current_segment_before_time,
             last_remaining_segment_before_time,
             last_location_before_time,
-            point_ahead,
+            last_track_point_before_time,
         ],
         ignore_index=True,
     )
@@ -270,5 +281,5 @@ else:
         longitude="longitude",
         color="color",
         zoom=16,
-        size=1,
+        size="size",
     )
