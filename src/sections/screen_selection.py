@@ -16,7 +16,7 @@ haptic_visual_map = {
 }
 
 
-def screen_selector(db_path: str) -> tuple[datetime, datetime]:
+def screen_selection_section(db_path: str) -> tuple[datetime, datetime]:
     st.subheader("Screen selection")
     st.write(
         "Select the screen you want to analyze. Pay attention to the track gpx and navigation mode"
@@ -67,20 +67,24 @@ def screen_selector(db_path: str) -> tuple[datetime, datetime]:
 
 
 def fetch_navigation_logs(db_path):
+    """
+    Fetches navigation logs from the database.
+
+    Navigation logs contain information about the user's navigation between screens.
+    """
     raw_data = fetch_logs(db_path, ["navigation"])
     print("Fetching and processing logs...")
+
+    def process_row(row):
+        data = convert_screen_nav_log_value_to_python_map(row["value"])
+        return pd.Series(
+            [row["timestamp"], data["route"], data["pathUri"], data["withHaptic"]]
+        )
 
     df = raw_data.apply(process_row, axis=1)
     df.columns = ["timestamp", "route", "pathUri", "withHaptic"]
     df["next_screen_timestamp"] = df["timestamp"].shift(-1)
     return df
-
-
-def process_row(row):
-    data = mapScreenNavValueToArgs(row["value"])
-    return pd.Series(
-        [row["timestamp"], data["route"], data["pathUri"], data["withHaptic"]]
-    )
 
 
 def calculate_time_on_screen(df_old):
@@ -94,7 +98,8 @@ def calculate_time_on_screen(df_old):
     return df
 
 
-def mapScreenNavValueToArgs(value: str):
+# screen_nav_log is a log from db representing navigation between screens
+def convert_screen_nav_log_value_to_python_map(value: str):
     try:
         json_data = json.loads(value)  # Parse JSON
         route = json_data.get("route")

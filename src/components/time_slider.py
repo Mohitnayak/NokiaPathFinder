@@ -32,7 +32,7 @@ def time_slider(
 
         min_time_datetime = data_on_selected_date["timestamp"].min().to_pydatetime()
         max_time_datetime = data_on_selected_date["timestamp"].max().to_pydatetime()
-        if with_time == False:
+        if not with_time:
             return (
                 datetime.combine(selected_date, datetime.min.time()),
                 datetime.combine(selected_date, datetime.max.time()),

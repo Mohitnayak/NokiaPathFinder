@@ -13,12 +13,22 @@ class Point:
 
 
 class BasePath:
+    """
+    Represents the base GPX path used to navigate the user in the mobile app.
+
+    Attributes:
+        points (list[Point]): A list of Point objects representing the path coordinates.
+        deviation_zone_radius (float): The radius (in meters) defining the allowed deviation zone from the base path.
+    """
     points: list[Point]
     deviation_zone_radius: float
 
-def get_base_path_for_time_range(
+def fetch_base_path_for_time_range(
     db_path: str, time_range: tuple[datetime, datetime]
 ) -> BasePath:
+    """
+    Fetches the base path that app was using during the specified time range.
+    """
     currentSegmentDf = filter_logs_by_time_range(
         fetch_logs(db_path, ["current-segment"]), time_range
     )

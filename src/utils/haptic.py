@@ -1,16 +1,19 @@
 from datetime import datetime
 import pandas as pd
 
-from utils.deviation import filter_location_data_by_intervals
+from utils.deviation import group_location_data_by_intervals
 from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
 
-def get_vibration_logs(
+def fetch_vibration_logs(
     db_path: str, location_column: str, time_range: tuple[datetime, datetime], side: str
 ) -> list[pd.DataFrame]:
+    """
+    Fetch vibration logs from the database and groups them by intervals.
+    """
     intervals = get_vibration_intervals(db_path, time_range, side)
 
-    return filter_location_data_by_intervals(
+    return group_location_data_by_intervals(
         filter_logs_by_time_range(
             convert_location_logs_to_df(db_path, location_column), time_range
         ),
@@ -23,6 +26,11 @@ def get_vibration_intervals(
     time_range: tuple[datetime, datetime],
     side: str,  # Left or Right or Both or None
 ):
+    """
+    Groups vibrations into intervals.
+
+    If there are multiple consecutive vibrations of the same type, they are grouped into a single interval.
+    """
     if side != "Both" and side != "Left" and side != "Right" and side != "None":
         raise ValueError("Invalid side value {side}")
 
@@ -51,7 +59,9 @@ def get_vibration_intervals(
 def replace_vibrator_stop_with_none(
     raw_data: pd.DataFrame,
 ) -> pd.DataFrame:
+    """
+    Utility function to replace "value" of each "vibrator_stop" event with "None".
+    """
     mask = raw_data["type"] == "vibrator_stop"
     raw_data.loc[mask, "value"] = "None"
-    raw_data.loc[mask, "type"] = "vibrator_start"
     return raw_data

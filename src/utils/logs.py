@@ -4,6 +4,20 @@ from datetime import datetime
 
 
 def fetch_logs(db_path: str, types: list[str]):
+    """
+    Fetches logs of specified types from a SQLite database and returns a normalized DataFrame.
+
+    Args:
+        db_path (str): Path to the SQLite database file.
+        types (list[str]): List of log types to fetch from the database.
+
+    Returns:
+        pandas.DataFrame: A normalized DataFrame containing the fetched logs with columns ["timestamp", "type", "value"].
+
+    Notes:
+        - Assumes the existence of a 'logs' table with columns 'timestamp', 'type', and 'value'.
+        - Relies on a 'normalize_logs' function to process the resulting DataFrame.
+    """
     # Connect to the SQLite database
     print(f"Connecting to database at {db_path}")
     conn = sqlite3.connect(db_path)
@@ -32,6 +46,15 @@ def fetch_logs(db_path: str, types: list[str]):
 
 
 def normalize_logs(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    Converts timestamp columns in the given DataFrame from milliseconds to datetime.
+
+    Parameters:
+        dataframe (pd.DataFrame): The input DataFrame containing a 'timestamp' column and optionally a 'next_screen_timestamp' column, both in milliseconds.
+
+    Returns:
+        pd.DataFrame: The DataFrame with 'timestamp' (and 'next_screen_timestamp', if present) converted to pandas datetime objects.
+    """
     dataframe["timestamp"] = pd.to_datetime(dataframe["timestamp"], unit="ms")
     if "next_screen_timestamp" in dataframe.columns:
         dataframe["next_screen_timestamp"] = pd.to_datetime(

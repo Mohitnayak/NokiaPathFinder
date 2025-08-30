@@ -2,7 +2,7 @@ import os
 import streamlit as st
 
 
-def select_database() -> str:
+def select_database_section() -> str:
     st.subheader("Database with logs")
     st.write("This is the database exported from the application")
     db_path = "temp/db.db"

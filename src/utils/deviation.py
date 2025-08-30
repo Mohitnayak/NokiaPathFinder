@@ -50,7 +50,7 @@ def get_on_track_logs(
 ) -> list[pd.DataFrame]:
     intervals = get_on_track_intervals(db_path, time_range, is_on_track)
 
-    return filter_location_data_by_intervals(
+    return group_location_data_by_intervals(
         filter_logs_by_time_range(
             convert_location_logs_to_df(db_path, location_column), time_range
         ),
@@ -86,10 +86,13 @@ def get_on_track_intervals(
     return intervals
 
 
-def filter_location_data_by_intervals(
+def group_location_data_by_intervals(
     location_data: pd.DataFrame,
     intervals: list[tuple[datetime, datetime]],
 ) -> list[pd.DataFrame]:
+    """
+    Utility that groups location data by intervals.
+    """
     location_data["timestamp"] = pd.to_datetime(location_data["timestamp"])
 
     segments = []

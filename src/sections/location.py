@@ -4,14 +4,13 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
-from utils.base_path import BasePath
 from components.time_slider import time_slider
 from utils.deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
 from utils.geojson import convert_base_path_to_geojson
-from utils.haptic import get_vibration_logs
+from utils.haptic import fetch_vibration_logs
 from utils.logs import convert_location_logs_to_df, filter_logs_by_time_range
 
-from utils.base_path import get_base_path_for_time_range
+from utils.base_path import fetch_base_path_for_time_range
 
 
 def location_section(
@@ -25,7 +24,7 @@ def location_section(
         "With this slider you can analyze only a part of selected route. By default it is the whole route."
     )
 
-    base_path = base_path = get_base_path_for_time_range(
+    base_path = base_path = fetch_base_path_for_time_range(
         db_path=db_path, time_range=selected_screen_timestamps
     )
 
@@ -51,7 +50,7 @@ def location_section(
     )
     side_logs = {}
     for side in ["Left", "Right", "Both", "None"]:
-        side_logs[side] = get_vibration_logs(
+        side_logs[side] = fetch_vibration_logs(
             db_path, location_column="location", time_range=selected_time, side=side
         )
 
@@ -81,8 +80,9 @@ def location_section(
     elements = []
     haptic_elements = []
     if base_path:
-        elements.append(base_path_line(base_path))
-        haptic_elements.append(base_path_line(base_path))
+        geojson = convert_base_path_to_geojson(base_path, color="blue")
+        elements.append(folium.GeoJson(geojson))
+        haptic_elements.append(folium.GeoJson(geojson))
 
     elements += map(
         lambda row: folium_dataframe_line(row, color="green", weight=16, opacity=0.5),
@@ -124,6 +124,9 @@ def folium_dataframe_line(df, color="red", weight=4, opacity=1.0):
 
 
 def folium_map(elements):
+    """
+    Creates a Folium map with the given elements.
+    """
     m = folium.Map(zoom_start=16)
     bounds: list[list[float]] = []
     for element in elements:
@@ -136,8 +139,3 @@ def folium_map(elements):
     m.fit_bounds(computed_bounds)
 
     return st_folium(m, width=725)
-
-
-def base_path_line(base_path: BasePath):
-    geojson = convert_base_path_to_geojson(base_path, color="blue")
-    return folium.GeoJson(geojson)

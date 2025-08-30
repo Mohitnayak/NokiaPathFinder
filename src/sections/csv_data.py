@@ -4,7 +4,7 @@ import json
 
 import pandas as pd
 
-from utils.base_path import get_base_path_for_time_range
+from utils.base_path import fetch_base_path_for_time_range
 from utils.geo import compute_average_speed_m_s
 from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
@@ -63,7 +63,7 @@ def get_csv_logs_for_time_range(
     location_logs_df = filter_logs_by_time_range(
         convert_location_logs_to_df(db_path, "location"), time_range
     )
-    base_path = get_base_path_for_time_range(db_path, time_range)
+    base_path = fetch_base_path_for_time_range(db_path, time_range)
     distance_from_track_df = filter_logs_by_time_range(
         fetch_logs(db_path, ["distance-from-track"]), time_range
     )

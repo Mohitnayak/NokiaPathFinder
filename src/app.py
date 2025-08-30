@@ -2,17 +2,17 @@ import streamlit as st
 
 from sections.compass import compass_section
 from sections.csv_data import csv_data
-from sections.database_selection import select_database
+from sections.database_selection import select_database_section
 from sections.location import location_section
-from sections.screen_selection import screen_selector
+from sections.screen_selection import screen_selection_section
 from utils.logs import (
     convert_location_logs_to_df,
     filter_logs_by_time_range,
 )
 
 
-db_path = select_database()
-selected_screen_timestamps = screen_selector(db_path=db_path)
+db_path = select_database_section()
+selected_screen_timestamps = screen_selection_section(db_path=db_path)
 
 all_location_logs = filter_logs_by_time_range(
     convert_location_logs_to_df(db_path, "raw-location"),
