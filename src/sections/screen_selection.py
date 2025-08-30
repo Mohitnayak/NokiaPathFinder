@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 from datetime import timedelta, datetime
 
-from utils import fetch_logs, filter_logs_by_time_range
+from utils.logs import fetch_logs, filter_logs_by_time_range
 
 haptic_visual_map = {
     True: "Haptic",

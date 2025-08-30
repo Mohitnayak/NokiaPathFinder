@@ -4,9 +4,9 @@ import json
 
 import pandas as pd
 
-from basePath import get_base_path_for_time_range
-from geo_utils import compute_average_speed_m_s
-from utils import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
+from utils.base_path import get_base_path_for_time_range
+from utils.geo import compute_average_speed_m_s
+from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
 
 def csv_data(db_path: str, selected_screen_timestamps: tuple[datetime, datetime]):

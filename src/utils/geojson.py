@@ -5,7 +5,7 @@ import urllib.parse
 import webbrowser
 from typing import Callable
 
-from basePath import BasePath
+from utils.base_path import BasePath
 
 def convert_base_path_to_geojson(base_path: BasePath, color: str = "blue") -> dict[str, any]:
     if not base_path.points:

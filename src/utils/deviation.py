@@ -1,8 +1,8 @@
 from datetime import datetime
 import pandas as pd
 
-from geo_utils import calculate_distance
-from utils import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
+from utils.geo import calculate_distance
+from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
 
 def get_time_on_track(

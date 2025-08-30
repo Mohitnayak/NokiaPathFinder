@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-from utils import fetch_logs, filter_logs_by_time_range
+from utils.logs import fetch_logs, filter_logs_by_time_range
 
 
 class Point:
@@ -15,7 +15,6 @@ class Point:
 class BasePath:
     points: list[Point]
     deviation_zone_radius: float
-
 
 def get_base_path_for_time_range(
     db_path: str, time_range: tuple[datetime, datetime]

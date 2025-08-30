@@ -3,8 +3,9 @@ import streamlit as st
 from sections.compass import compass_section
 from sections.csv_data import csv_data
 from sections.database_selection import select_database
+from sections.location import location_section
 from sections.screen_selection import screen_selector
-from utils import (
+from utils.logs import (
     convert_location_logs_to_df,
     filter_logs_by_time_range,
 )
@@ -23,5 +24,11 @@ if all_location_logs.empty:
     st.stop()
 
 csv_data(db_path=db_path, selected_screen_timestamps=selected_screen_timestamps)
+
+location_section(
+    db_path=db_path,
+    selected_screen_timestamps=selected_screen_timestamps,
+    location_logs=all_location_logs,
+)
 
 compass_section(db_path=db_path, all_location_logs=all_location_logs)

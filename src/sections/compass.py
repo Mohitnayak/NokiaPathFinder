@@ -2,14 +2,14 @@ import pandas as pd
 import streamlit as st
 from datetime import timedelta
 
-from geo import interpolate_locations
+from utils.geo import interpolate_locations
 from components.time_slider import time_slider
-from utils import (
+from utils.logs import (
     fetch_logs,
     convert_location_logs_to_df,
-    convert_segment_log_to_df,
     filter_logs_by_time_range,
 )
+import json
 
 
 def compass_section(db_path: str, all_location_logs: pd.DataFrame):
@@ -46,10 +46,6 @@ def compass_section(db_path: str, all_location_logs: pd.DataFrame):
         st.write("No orientation logs found")
     else:
         exact_direction_time = direction_logs["timestamp"].iloc[0]
-        last_orientation_before_time = filter_logs_by_time_range(
-            orientation_logs,
-            (exact_direction_time - timedelta(seconds=3), exact_direction_time),
-        ).tail(1)
         last_location_before_time = filter_logs_by_time_range(
             all_location_logs,
             (exact_direction_time - timedelta(seconds=60), exact_direction_time),
@@ -151,3 +147,26 @@ def fetch_orientation_logs(db_path: str, column: str):
 
     result = df.groupby(df["timestamp"])["value"].first().reset_index()
     return result
+
+def convert_segment_log_to_df(value: str) -> pd.DataFrame:
+    # Assuming value is a JSON string with "latitude" and "longitude" keys
+    #     {
+    #   "points":
+    #     [
+    #       { "latitude": 61.454442, "longitude": 23.844628 },
+    #       { "latitude": 61.454435, "longitude": 23.844597 },
+    #     ],
+    # }
+    try:
+        data = json.loads(value)
+        points = data.get("points", [])
+        if not points:
+            print("No points found in the segment log.")
+            return pd.DataFrame()
+        df = pd.DataFrame(points)
+        df["latitude"] = df["latitude"].astype(float)
+        df["longitude"] = df["longitude"].astype(float)
+        return df
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON: {value}")
+        return pd.DataFrame()

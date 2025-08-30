@@ -4,14 +4,14 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
-from basePath import BasePath
+from utils.base_path import BasePath
 from components.time_slider import time_slider
-from deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
-from geojson import convert_base_path_to_geojson
-from haptic import get_vibration_logs
-from utils import convert_location_logs_to_df, filter_logs_by_time_range
+from utils.deviation import get_on_track_distance, get_on_track_logs, get_time_on_track
+from utils.geojson import convert_base_path_to_geojson
+from utils.haptic import get_vibration_logs
+from utils.logs import convert_location_logs_to_df, filter_logs_by_time_range
 
-from basePath import get_base_path_for_time_range
+from utils.base_path import get_base_path_for_time_range
 
 
 def location_section(

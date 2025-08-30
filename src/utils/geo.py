@@ -4,6 +4,7 @@ from shapely.geometry import Point, LineString
 import pyproj
 from shapely.ops import transform
 from functools import partial
+from geopy.distance import geodesic
 
 projection = partial(
     pyproj.transform,
@@ -19,7 +20,6 @@ reverse_projection = partial(
 def closest_point_on_track(
     position_lat: float, position_lon: float, track_df: pd.DataFrame
 ) -> tuple[float, float]:
-
     your_lat = position_lat
     your_lon = position_lon
     your_point = Point(your_lon, your_lat)  # Shapely uses (lon, lat)
@@ -83,6 +83,7 @@ def convert_track_to_line(track_df: pd.DataFrame) -> LineString:
     ]
     return LineString(points)
 
+
 def interpolate_locations(df: pd.DataFrame, num_points=20) -> pd.DataFrame:
     """
     Interpolates `num_points` points between each consecutive pair of coordinates in the DataFrame.
@@ -101,11 +102,55 @@ def interpolate_locations(df: pd.DataFrame, num_points=20) -> pd.DataFrame:
         end = df.iloc[i + 1]
 
         # Create arrays of interpolated latitudes and longitudes
-        latitudes = np.linspace(start['latitude'], end['latitude'], num_points + 2)  # +2 to include start and end
-        longitudes = np.linspace(start['longitude'], end['longitude'], num_points + 2)
+        latitudes = np.linspace(
+            start["latitude"], end["latitude"], num_points + 2
+        )  # +2 to include start and end
+        longitudes = np.linspace(start["longitude"], end["longitude"], num_points + 2)
 
         for lat, lon in zip(latitudes, longitudes):
-            interpolated_data.append({'latitude': lat, 'longitude': lon})
+            interpolated_data.append({"latitude": lat, "longitude": lon})
 
     # Convert to DataFrame
     return pd.DataFrame(interpolated_data)
+
+
+def calculate_distance(df: pd.DataFrame) -> float:
+    """
+    Calculate total geodesic distance (in meters) between points in a DataFrame.
+
+    Assumes DataFrame has columns: ['lat', 'lon'] or ['latitude', 'longitude'].
+
+    Parameters:
+    df (pd.DataFrame): A DataFrame containing latitude and longitude columns.
+
+    Returns:
+    float: Total distance in meters.
+    """
+    total_distance = 0.0
+
+    # Handle different column name possibilities
+    if "lat" in df.columns and "lon" in df.columns:
+        coords = list(zip(df["lat"], df["lon"]))
+    elif "latitude" in df.columns and "longitude" in df.columns:
+        coords = list(zip(df["latitude"], df["longitude"]))
+    else:
+        raise ValueError(
+            "DataFrame must contain 'lat' and 'lon' or 'latitude' and 'longitude' columns."
+        )
+
+    for i in range(len(coords) - 1):
+        total_distance += geodesic(coords[i], coords[i + 1]).meters
+
+    return total_distance
+
+
+def compute_average_speed_m_s(df: pd.DataFrame) -> float:
+    total_distance = 0.0
+    timestamps = df["timestamp"].tolist()
+    coords = df[["latitude", "longitude"]].values.tolist()
+
+    for i in range(1, len(coords)):
+        total_distance += geodesic(coords[i - 1], coords[i]).meters
+
+    total_time_s = (timestamps[-1] - timestamps[0]).total_seconds()
+    return total_distance / total_time_s if total_time_s > 0 else 0
