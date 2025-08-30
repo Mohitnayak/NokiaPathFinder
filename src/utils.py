@@ -32,18 +32,6 @@ def fetch_logs(db_path: str, types: list[str]):
     return normalize_logs(df)
 
 
-def fetch_orientation_logs(db_path: str, column: str):
-    df = fetch_logs(db_path, [column])
-    # convert value to number
-    df["value"] = df["value"].astype(float)
-    # combine logs from one second and average it
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["timestamp"] = df["timestamp"].dt.floor("1S")
-
-    result = df.groupby(df["timestamp"])["value"].first().reset_index()
-    return result
-
-
 def convert_location_logs_to_df(db_path: str, column: str) -> pd.DataFrame:
     df = fetch_logs(db_path, [column])
 

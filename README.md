@@ -1,0 +1,15 @@
+# Data analysis toolkit
+
+This is the toolkit you can use to analyze logs from PathFAInder application.
+
+## Development setup
+
+1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+1. Clone this repository
+1. Run `uv sync` to install the dependencies
+1. Run `uv run streamlit run src/app.py` to start the development server
+
+## Files and functions
+
+- [app.py](src/app.py): The main Streamlit application file. It constructs the user interface and handles user interactions.
+
