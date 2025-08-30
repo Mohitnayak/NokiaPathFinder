@@ -16,3 +16,6 @@ This is the toolkit you can use to analyze logs from PathFAInder application.
 - [sections](src/sections): Contains the different sections of the application, each responsible for a specific part of the analysis.
 - [utils](src/utils): Contains utility functions and classes used throughout the application.
 
+## Streamlit deployment
+
+[Documentation](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app)
