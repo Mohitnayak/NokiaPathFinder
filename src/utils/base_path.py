@@ -36,9 +36,8 @@ def fetch_base_path_for_time_range(
     )
     if currentSegmentDf.empty:
         raise "No route found for this time range. This is most likely a bug in logs."
-    # TODO: Verify why this situation happened in the app
-    # if currentSegmentDf.shape[0] > 1:
-    #     raise "More than one route found for this time range. This is most likely a bug in logs."
+    if currentSegmentDf.shape[0] > 1:
+        raise "More than one route found for this time range. This is most likely a bug in logs."
 
     # format of currentSegment is {"points": [{"latitude": 0.0, "longitude": 0.0}, ...]}
     currentSegment = json.loads(currentSegmentDf["value"].iloc[0])
