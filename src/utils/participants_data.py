@@ -1,8 +1,10 @@
 """
 Scan Participants-data-pathFinder folder and resolve participant + type to db path.
+Supports optional base_path (e.g. from extracted zip).
 """
 import os
 import re
+import zipfile
 
 # Base path relative to project root (where streamlit is typically run from)
 PARTICIPANTS_BASE = os.path.join(
@@ -10,6 +12,65 @@ PARTICIPANTS_BASE = os.path.join(
     "Participants-data-pathFinder",
     "Participants-data-pathFinder",
 )
+
+PARTICIPANT_DIR_PATTERN = re.compile(r"^P\d+$", re.IGNORECASE)
+
+# Default extract dir for zip uploads (relative to project root)
+ZIP_EXTRACT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "temp",
+    "participants_extracted",
+)
+
+
+def extract_participants_zip(zip_path: str) -> list[dict]:
+    """
+    Extract a zip containing Participants-data-pathFinder structure and return
+    get_participants_data() entries for the extracted tree.
+
+    Returns:
+        list[dict]: Same shape as get_participants_data(); empty if zip invalid or no .db found.
+    """
+    if not os.path.isfile(zip_path):
+        return []
+    os.makedirs(ZIP_EXTRACT_DIR, exist_ok=True)
+    try:
+        with zipfile.ZipFile(zip_path, "r") as z:
+            z.extractall(ZIP_EXTRACT_DIR)
+    except (zipfile.BadZipFile, OSError):
+        return []
+    base = find_participants_base(ZIP_EXTRACT_DIR)
+    if base is None:
+        return []
+    return get_participants_data(base_path=base)
+
+
+def find_participants_base(extract_dir: str) -> str | None:
+    """
+    Find the directory that contains participant folders (P1, P2, ...).
+    Checks extract_dir and one level of subdirs (for zips with Participants-data-pathFinder/...).
+    """
+    if not os.path.isdir(extract_dir):
+        return None
+    # Check root
+    try:
+        names = os.listdir(extract_dir)
+    except OSError:
+        return None
+    participant_dirs = [n for n in names if PARTICIPANT_DIR_PATTERN.match(n)]
+    if participant_dirs:
+        return extract_dir
+    # One level down (e.g. Participants-data-pathFinder or Participants-data-pathFinder/Participants-data-pathFinder)
+    for name in names:
+        sub = os.path.join(extract_dir, name)
+        if os.path.isdir(sub):
+            try:
+                sub_names = os.listdir(sub)
+            except OSError:
+                continue
+            if any(PARTICIPANT_DIR_PATTERN.match(n) for n in sub_names):
+                return sub
+    return None
 
 
 def _parse_type_folder(folder_name: str) -> tuple[str, str] | None:
@@ -38,22 +99,26 @@ def _type_display(env: str, mode: str) -> str:
     return f"{env} - {mode}"
 
 
-def get_participants_data():
+def get_participants_data(base_path: str | None = None) -> list[dict]:
     """
-    Scan PARTICIPANTS_BASE and return structure for dropdowns.
+    Scan base_path (or PARTICIPANTS_BASE) and return structure for dropdowns.
+
+    Args:
+        base_path: Directory containing P1, P2, ... folders. If None, uses PARTICIPANTS_BASE.
 
     Returns:
         list[dict]: Each item has 'participant' (e.g. 'P1'), 'env' ('Urban'|'Non Urban'),
                     'mode' ('Visual'|'Haptic'), 'display' (e.g. 'Urban - Visual'), 'db_path' (absolute path to .db).
         Empty list if base path does not exist or has no valid data.
     """
-    if not os.path.isdir(PARTICIPANTS_BASE):
+    root = base_path if base_path is not None else PARTICIPANTS_BASE
+    if not os.path.isdir(root):
         return []
 
     entries = []
-    for p_dir in sorted(os.listdir(PARTICIPANTS_BASE)):
-        p_path = os.path.join(PARTICIPANTS_BASE, p_dir)
-        if not os.path.isdir(p_path) or not re.match(r"^P\d+$", p_dir, re.IGNORECASE):
+    for p_dir in sorted(os.listdir(root)):
+        p_path = os.path.join(root, p_dir)
+        if not os.path.isdir(p_path) or not PARTICIPANT_DIR_PATTERN.match(p_dir):
             continue
         participant = p_dir  # e.g. P1, P2
 
