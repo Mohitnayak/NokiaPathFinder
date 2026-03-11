@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 from datetime import timedelta, datetime
 
-from utils.logs import fetch_logs, filter_logs_by_time_range
+from utils.logs import fetch_logs, filter_logs_by_time_range, get_last_location_timestamp_ms
 
 haptic_visual_map = {
     True: "Haptic",
@@ -60,10 +60,19 @@ def screen_selection_section(db_path: str) -> tuple[datetime, datetime]:
     start_timestamp = navigation_screens.loc[selected_index, "timestamp"]
     end_timestamp = navigation_screens.loc[selected_index, "next_screen_timestamp"]
 
-    if end_timestamp is pd.NaT:
-        end_timestamp = start_timestamp + timedelta(hours=12)
+    # If no "left screen" nav event (last screen in session), infer end from last location data
+    if end_timestamp is pd.NaT or end_timestamp is None:
+        start_ms = int(start_timestamp.timestamp() * 1000)
+        last_ms = get_last_location_timestamp_ms(db_path, start_ms)
+        if last_ms is not None:
+            end_timestamp = pd.Timestamp(int(last_ms), unit="ms")
+        else:
+            end_timestamp = start_timestamp + timedelta(hours=12)
 
-    return start_timestamp, end_timestamp
+    # Return as Python datetime for type consistency (tuple[datetime, datetime])
+    start_dt = start_timestamp.to_pydatetime() if hasattr(start_timestamp, "to_pydatetime") else start_timestamp
+    end_dt = end_timestamp.to_pydatetime() if hasattr(end_timestamp, "to_pydatetime") else end_timestamp
+    return start_dt, end_dt
 
 
 def fetch_navigation_logs(db_path):

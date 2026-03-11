@@ -180,3 +180,12 @@ out/
 *.db-wal
 
 temp/
+
+# Large data (keep code only; add data locally)
+Participants-data-pathFinder/
+Participants-data-pathFinder.zip
+all_participants_db/
+all_participant_csv/
+
+# Word temp/lock files
+~$*

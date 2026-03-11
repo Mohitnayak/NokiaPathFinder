@@ -35,9 +35,9 @@ def fetch_base_path_for_time_range(
         fetch_logs(db_path, ["current-segment"]), time_range
     )
     if currentSegmentDf.empty:
-        raise "No route found for this time range. This is most likely a bug in logs."
-    if currentSegmentDf.shape[0] > 1:
-        raise "More than one route found for this time range. This is most likely a bug in logs."
+        raise ValueError("No route found for this time range. This is most likely a bug in logs.")
+    # If multiple segments in range (e.g. P1 data), use the first (earliest) – segment active at run start
+    currentSegmentDf = currentSegmentDf.sort_values("timestamp").reset_index(drop=True)
 
     # format of currentSegment is {"points": [{"latitude": 0.0, "longitude": 0.0}, ...]}
     currentSegment = json.loads(currentSegmentDf["value"].iloc[0])
@@ -46,9 +46,9 @@ def fetch_base_path_for_time_range(
         fetch_logs(db_path, ["current-max-deviation"]), time_range
     )
     if maxDeviationDf.empty:
-        raise "No max deviation found for this time range. This is most likely a bug in logs."
-    if maxDeviationDf.shape[0] > 1:
-        raise "More than one max deviation found for this time range. This is most likely a bug in logs."
+        raise ValueError("No max deviation found for this time range. This is most likely a bug in logs.")
+    # If multiple max-deviation logs in range, use the first (earliest) to match segment
+    maxDeviationDf = maxDeviationDf.sort_values("timestamp").reset_index(drop=True)
 
     maxDeviation = float(maxDeviationDf["value"].iloc[0])
 

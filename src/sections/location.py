@@ -11,6 +11,7 @@ from utils.haptic import fetch_vibration_logs
 from utils.logs import convert_location_logs_to_df, filter_logs_by_time_range
 
 from utils.base_path import fetch_base_path_for_time_range
+from utils.geo import compute_average_speed_m_s
 
 
 def location_section(
@@ -54,16 +55,37 @@ def location_section(
             db_path, location_column="location", time_range=selected_time, side=side
         )
 
-    st.write(f"Time on track: {get_time_on_track(db_path, selected_time)}s")
-    st.write(
-        f"Distance on track: {get_on_track_distance(db_path, location_column='location', time_range=selected_time, is_on_track=True)}m"
+    # Summary: all metrics with average speed and completion time
+    time_on_track_s = get_time_on_track(db_path, selected_time)
+    time_off_track_s = get_time_on_track(db_path, selected_time, is_on_track=False)
+    distance_on_track_m = get_on_track_distance(
+        db_path, location_column="location", time_range=selected_time, is_on_track=True
+    )
+    distance_off_track_m = get_on_track_distance(
+        db_path, location_column="location", time_range=selected_time, is_on_track=False
+    )
+    completion_time_s = (selected_time[1] - selected_time[0]).total_seconds()
+    location_for_speed = filter_logs_by_time_range(
+        convert_location_logs_to_df(db_path, "location"), selected_time
+    )
+    average_speed_m_s = (
+        compute_average_speed_m_s(location_for_speed)
+        if not location_for_speed.empty and len(location_for_speed) > 1
+        else 0.0
     )
 
-    st.write(
-        f"Time off track: {get_time_on_track(db_path, selected_time, is_on_track=False)}s"
-    )
-    st.write(
-        f"Distance off track: {get_on_track_distance(db_path, location_column='location', time_range=selected_time, is_on_track=False)}m"
+    st.subheader("Summary metrics")
+    st.markdown(
+        f"""
+    | Metric | Value |
+    |--------|-------|
+    | **Time on track** | {time_on_track_s:.1f}s |
+    | **Distance on track** | {distance_on_track_m:.2f}m |
+    | **Time off track** | {time_off_track_s:.1f}s |
+    | **Distance off track** | {distance_off_track_m:.2f}m |
+    | **Average speed** | {average_speed_m_s:.2f} m/s |
+    | **Completion time** | {completion_time_s:.1f}s |
+    """
     )
 
     st.write("You can also add the recorded GPX file to compare it with user's route.")
@@ -93,11 +115,13 @@ def location_section(
         off_track_logs,
     )
 
-    elements.append(folium_dataframe_line(filtered_location_logs))
-    elements.append(
-        folium_dataframe_line(raw_filtered_location_logs, color="orange", weight=4)
-    )
-    haptic_elements.append(folium_dataframe_line(filtered_location_logs))
+    if not filtered_location_logs.empty:
+        elements.append(folium_dataframe_line(filtered_location_logs))
+        haptic_elements.append(folium_dataframe_line(filtered_location_logs))
+    if not raw_filtered_location_logs.empty:
+        elements.append(
+            folium_dataframe_line(raw_filtered_location_logs, color="orange", weight=4)
+        )
 
     folium_map(elements)
 

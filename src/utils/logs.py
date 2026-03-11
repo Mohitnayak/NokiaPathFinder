@@ -1,4 +1,6 @@
 import sqlite3
+from typing import Optional
+
 import pandas as pd
 from datetime import datetime
 
@@ -83,3 +85,23 @@ def filter_logs_by_time_range(
         (dataframe["timestamp"] >= time_range[0])
         & (dataframe["timestamp"] <= time_range[1])
     ]
+
+
+def get_last_location_timestamp_ms(db_path: str, after_ms: int) -> Optional[int]:
+    """
+    Return the latest timestamp (ms) from location or raw-location logs
+    that are >= after_ms. Use when a screen has no "next" navigation event
+    so the end time can be inferred from actual tracking data.
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT MAX(timestamp) FROM logs
+        WHERE type IN ('location', 'raw-location') AND timestamp >= ?
+        """,
+        (after_ms,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row and row[0] is not None else None
