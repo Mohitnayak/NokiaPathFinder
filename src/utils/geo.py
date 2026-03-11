@@ -144,9 +144,9 @@ def calculate_distance(df: pd.DataFrame) -> float:
     return total_distance
 
 
-# Speed bounds (m/s) for segment to count as "movement". Below min = stationary (excluded). Above max = GPS jump (excluded).
+# Speed bounds (m/s) for segment to count as "movement". Below min = stationary (excluded). Above max = noise/jump (excluded).
 MIN_SEGMENT_SPEED_M_S = 0.3   # ~1 km/h; below this = standing still, not counted in completion time
-MAX_SEGMENT_SPEED_M_S = 50.0  # ~180 km/h
+MAX_SEGMENT_SPEED_M_S = 2.5   # ~9 km/h fast walk; above = GPS noise or non-walking, excluded so average reflects walking only
 
 
 def _plausible_segment_totals(df: pd.DataFrame) -> tuple[float, float]:
