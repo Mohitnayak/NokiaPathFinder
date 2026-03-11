@@ -50,11 +50,10 @@ def select_database_section() -> str:
         st.sidebar.warning("No database selected.")
         st.stop()
     else:
-        # No folder and no zip data: offer zip or single .db upload
+        # No folder and no zip data: require zip first (single .db is optional alternative)
         st.sidebar.subheader("Participants data")
         st.sidebar.write(
-            "Upload a **zip** of Participants-data-pathFinder (folder with P1, P2, … and .db files), "
-            "or a single .db file below."
+            "Upload a **zip** of Participants-data-pathFinder (folder with P1, P2, … and .db files) to use the filters."
         )
         zip_file = st.sidebar.file_uploader(
             "Upload participants zip",
@@ -79,13 +78,16 @@ def select_database_section() -> str:
         else:
             if SESSION_ENTRIES in st.session_state:
                 del st.session_state[SESSION_ENTRIES]
-            st.sidebar.caption("Or upload a single database file:")
-            db_path = "temp/db.db"
-            os.makedirs("temp", exist_ok=True)
-            file = select_file("Select database file", db_path, type="db")
-            if not file:
-                st.stop()
-            return db_path
+            # Single .db only as optional alternative inside expander
+            with st.sidebar.expander("Or use a single database file"):
+                st.caption("Upload one .db file to analyze that run only (no Participant/Type filters).")
+                db_path = "temp/db.db"
+                os.makedirs("temp", exist_ok=True)
+                file = select_file("Select database file", db_path, type="db")
+                if file:
+                    return db_path
+            st.sidebar.info("Upload a participants zip above to continue.")
+            st.stop()
 
 
 def select_file(label: str, temp_file_name: str = "", type=""):
