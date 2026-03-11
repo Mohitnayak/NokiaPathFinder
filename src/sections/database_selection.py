@@ -55,12 +55,16 @@ def select_database_section() -> str:
         st.sidebar.write(
             "Upload a **zip** of Participants-data-pathFinder (folder with P1, P2, … and .db files) to use the filters."
         )
+        # Don't restrict type=zip so Cloud platforms that block application/x-zip-compressed still accept the file
         zip_file = st.sidebar.file_uploader(
-            "Upload participants zip",
-            type="zip",
+            "Upload participants zip (.zip)",
+            type=None,
             key="participants_zip_upload",
         )
         if zip_file:
+            if not (zip_file.name and zip_file.name.lower().endswith(".zip")):
+                st.sidebar.error("Please upload a .zip file.")
+                st.stop()
             temp_zip = os.path.join("temp", "participants_upload.zip")
             os.makedirs("temp", exist_ok=True)
             with open(temp_zip, "wb") as f:
