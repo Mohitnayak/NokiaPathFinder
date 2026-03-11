@@ -144,13 +144,44 @@ def calculate_distance(df: pd.DataFrame) -> float:
     return total_distance
 
 
-def compute_average_speed_m_s(df: pd.DataFrame) -> float:
-    total_distance = 0.0
+# Speed bounds (m/s) for segment to count as "movement". Below min = stationary (excluded). Above max = GPS jump (excluded).
+MIN_SEGMENT_SPEED_M_S = 0.3   # ~1 km/h; below this = standing still, not counted in completion time
+MAX_SEGMENT_SPEED_M_S = 50.0  # ~180 km/h
+
+
+def _plausible_segment_totals(df: pd.DataFrame) -> tuple[float, float]:
+    """
+    Sum distance (m) and time (s) over segments with MIN <= speed <= MAX.
+    Stationary and GPS jumps are excluded so completion time = time actually moving.
+    """
     timestamps = df["timestamp"].tolist()
     coords = df[["latitude", "longitude"]].values.tolist()
-
+    total_distance = 0.0
+    total_time_s = 0.0
     for i in range(1, len(coords)):
-        total_distance += geodesic(coords[i - 1], coords[i]).meters
+        seg_dist_m = geodesic(coords[i - 1], coords[i]).meters
+        seg_dt_s = (timestamps[i] - timestamps[i - 1]).total_seconds()
+        if seg_dt_s <= 0:
+            continue
+        seg_speed = seg_dist_m / seg_dt_s
+        if MIN_SEGMENT_SPEED_M_S <= seg_speed <= MAX_SEGMENT_SPEED_M_S:
+            total_distance += seg_dist_m
+            total_time_s += seg_dt_s
+    return total_distance, total_time_s
 
-    total_time_s = (timestamps[-1] - timestamps[0]).total_seconds()
-    return total_distance / total_time_s if total_time_s > 0 else 0
+
+def compute_average_speed_m_s(df: pd.DataFrame) -> float:
+    """
+    Average speed over plausible segments only (excludes GPS jumps).
+    """
+    total_distance, total_time_s = _plausible_segment_totals(df)
+    return total_distance / total_time_s if total_time_s > 0 else 0.0
+
+
+def compute_movement_time_s(df: pd.DataFrame) -> float:
+    """
+    Total time (s) spent in plausible movement (segments with speed <= MAX_SEGMENT_SPEED_M_S).
+    Use this as completion time so it reflects actual movement duration, not full log span.
+    """
+    _, total_time_s = _plausible_segment_totals(df)
+    return total_time_s

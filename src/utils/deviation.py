@@ -5,6 +5,20 @@ from utils.geo import calculate_distance
 from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
 
+def _clip_interval_to_range(
+    start: datetime | None,
+    end: datetime | None,
+    time_range: tuple[datetime, datetime],
+) -> tuple[datetime, datetime]:
+    """Clip (start, end) to [time_range[0], time_range[1]] so sum of on/off never exceeds session window."""
+    lo, hi = time_range[0], time_range[1]
+    s = start if start is not None else lo
+    e = end if end is not None else hi
+    clip_start = max(s, lo)
+    clip_end = min(e, hi)
+    return (clip_start, clip_end)
+
+
 def get_time_on_track(
     db_path: str,
     time_range: tuple[datetime, datetime],
@@ -13,18 +27,15 @@ def get_time_on_track(
     intervals = get_on_track_intervals(
         db_path, time_range=time_range, is_on_track=is_on_track
     )
-    for i, interval in enumerate(intervals):
-        if interval[0] is not None and interval[1] is not None:
-            continue
-        start = interval[0]
-        end = interval[1]
+    total_s = 0.0
+    for start, end in intervals:
         if start is None:
             start = time_range[0]
         if end is None:
             end = time_range[1]
-        intervals[i] = (start, end)
-
-    return sum((interval[1] - interval[0]).total_seconds() for interval in intervals)
+        clip_start, clip_end = _clip_interval_to_range(start, end, time_range)
+        total_s += max(0.0, (clip_end - clip_start).total_seconds())
+    return total_s
 
 
 def get_on_track_distance(

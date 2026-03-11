@@ -11,7 +11,7 @@ from utils.haptic import fetch_vibration_logs
 from utils.logs import convert_location_logs_to_df, filter_logs_by_time_range
 
 from utils.base_path import fetch_base_path_for_time_range
-from utils.geo import compute_average_speed_m_s
+from utils.geo import compute_average_speed_m_s, compute_movement_time_s
 
 
 def location_section(
@@ -64,27 +64,49 @@ def location_section(
     distance_off_track_m = get_on_track_distance(
         db_path, location_column="location", time_range=selected_time, is_on_track=False
     )
-    completion_time_s = (selected_time[1] - selected_time[0]).total_seconds()
     location_for_speed = filter_logs_by_time_range(
         convert_location_logs_to_df(db_path, "location"), selected_time
     )
-    average_speed_m_s = (
-        compute_average_speed_m_s(location_for_speed)
-        if not location_for_speed.empty and len(location_for_speed) > 1
-        else 0.0
-    )
+    if not location_for_speed.empty and len(location_for_speed) > 1:
+        # Completion time = time in plausible movement only (excludes stationary/jumps)
+        completion_time_s = compute_movement_time_s(location_for_speed)
+        # Location log time = full span first to last fix (for reference)
+        first_ts = location_for_speed["timestamp"].min()
+        last_ts = location_for_speed["timestamp"].max()
+        location_log_time_s = (last_ts - first_ts).total_seconds()
+        average_speed_m_s = compute_average_speed_m_s(location_for_speed)
+    else:
+        completion_time_s = 0.0
+        location_log_time_s = 0.0
+        average_speed_m_s = 0.0
+        first_ts = last_ts = None
 
     st.subheader("Summary metrics")
+    # Round to avoid float display noise (e.g. 3.3278303805192095)
+    t_on = round(float(time_on_track_s), 1)
+    t_off = round(float(time_off_track_s), 1)
+    d_on = round(float(distance_on_track_m), 2)
+    d_off = round(float(distance_off_track_m), 2)
+    spd = round(float(average_speed_m_s), 2)
+    comp = round(float(completion_time_s), 1)
+    log_time = round(float(location_log_time_s), 1)
+    time_range_str = (
+        f"{first_ts.strftime('%H:%M')} – {last_ts.strftime('%H:%M')}"
+        if first_ts is not None and last_ts is not None
+        else "—"
+    )
     st.markdown(
         f"""
     | Metric | Value |
     |--------|-------|
-    | **Time on track** | {time_on_track_s:.1f}s |
-    | **Distance on track** | {distance_on_track_m:.2f}m |
-    | **Time off track** | {time_off_track_s:.1f}s |
-    | **Distance off track** | {distance_off_track_m:.2f}m |
-    | **Average speed** | {average_speed_m_s:.2f} m/s |
-    | **Completion time** | {completion_time_s:.1f}s |
+    | **Time on track** | {t_on}s |
+    | **Distance on track** | {d_on}m |
+    | **Time off track** | {t_off}s |
+    | **Distance off track** | {d_off}m |
+    | **Average speed** | {spd} m/s |
+    | **Completion time** | {comp}s (time moving, excludes stationary) |
+    | **Location log time** | {log_time}s (first to last fix) |
+    | **Location data range** | {time_range_str} |
     """
     )
 

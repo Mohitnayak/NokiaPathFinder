@@ -5,7 +5,7 @@ import json
 import pandas as pd
 
 from utils.base_path import fetch_base_path_for_time_range
-from utils.geo import compute_average_speed_m_s
+from utils.geo import compute_average_speed_m_s, compute_movement_time_s
 from utils.logs import convert_location_logs_to_df, fetch_logs, filter_logs_by_time_range
 
 
@@ -54,11 +54,10 @@ def get_csv_logs_for_time_range(
         raise ValueError(
             "No navigation logs found for the selected time range. This is most likely a bug in logs."
         )
-    if navigation_df.shape[0] > 1:
-        raise ValueError(
-            "More than one navigation log found for the selected time range. This is most likely a bug in logs."
-        )
-    is_haptic = json.loads(navigation_df["value"].iloc[0])["withHaptic"]
+    # If extended range includes multiple runs, use the one at run start (earliest in range)
+    navigation_df = navigation_df.sort_values("timestamp").reset_index(drop=True)
+    nav_row = navigation_df.iloc[0]
+    is_haptic = json.loads(nav_row["value"])["withHaptic"]
     # location logs in format: dataframe with columns: timestamp, latitude, longitude
     location_logs_df = filter_logs_by_time_range(
         convert_location_logs_to_df(db_path, "location"), time_range
@@ -72,9 +71,21 @@ def get_csv_logs_for_time_range(
     )
     csvLog = CSVLog()
     csvLog.deviation_zone_radius = base_path.deviation_zone_radius
-    csvLog.task_completion_time_s = (time_range[1] - time_range[0]).total_seconds()
-    csvLog.average_speed_m_s = compute_average_speed_m_s(location_logs_df)
-    csvLog.average_distance_from_route_m = distance_from_track_df["value"].mean()
+    # Task completion time = time moving (plausible segments only), same as summary "Completion time"
+    if len(location_logs_df) > 1:
+        csvLog.task_completion_time_s = round(
+            compute_movement_time_s(location_logs_df), 1
+        )
+        csvLog.average_speed_m_s = round(
+            compute_average_speed_m_s(location_logs_df), 2
+        )
+    else:
+        csvLog.task_completion_time_s = 0.0
+        csvLog.average_speed_m_s = 0.0
+    avg_dist = distance_from_track_df["value"].mean()
+    csvLog.average_distance_from_route_m = (
+        round(avg_dist, 2) if pd.notna(avg_dist) else 0.0
+    )
     csvLog.is_haptic = is_haptic
 
     return csvLog

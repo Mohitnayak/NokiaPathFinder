@@ -60,14 +60,22 @@ def screen_selection_section(db_path: str) -> tuple[datetime, datetime]:
     start_timestamp = navigation_screens.loc[selected_index, "timestamp"]
     end_timestamp = navigation_screens.loc[selected_index, "next_screen_timestamp"]
 
-    # If no "left screen" nav event (last screen in session), infer end from last location data
-    if end_timestamp is pd.NaT or end_timestamp is None:
-        start_ms = int(start_timestamp.timestamp() * 1000)
-        last_ms = get_last_location_timestamp_ms(db_path, start_ms)
-        if last_ms is not None:
-            end_timestamp = pd.Timestamp(int(last_ms), unit="ms")
+    start_ms = int(start_timestamp.timestamp() * 1000)
+    last_location_ms = get_last_location_timestamp_ms(db_path, start_ms)
+    MAX_RUN_HOURS = 3
+    cap_ms = start_ms + int(MAX_RUN_HOURS * 3600 * 1000)
+    # Extend end to last location when: no nav end, or location logs continue after nav end (within 30 min)
+    EXTEND_WINDOW_MS = 30 * 60 * 1000  # 30 minutes after nav end
+    if last_location_ms is not None:
+        last_ts = pd.Timestamp(min(last_location_ms, cap_ms), unit="ms")
+        if end_timestamp is pd.NaT or end_timestamp is None:
+            end_timestamp = last_ts
         else:
-            end_timestamp = start_timestamp + timedelta(hours=12)
+            end_ms = int(end_timestamp.timestamp() * 1000)
+            if last_location_ms > end_ms and (last_location_ms - end_ms) <= EXTEND_WINDOW_MS:
+                end_timestamp = last_ts  # user kept moving after "next screen" event
+    if end_timestamp is pd.NaT or end_timestamp is None:
+        end_timestamp = start_timestamp + timedelta(hours=12)
 
     # Return as Python datetime for type consistency (tuple[datetime, datetime])
     start_dt = start_timestamp.to_pydatetime() if hasattr(start_timestamp, "to_pydatetime") else start_timestamp
